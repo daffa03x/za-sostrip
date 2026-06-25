@@ -1,0 +1,49 @@
+---
+interface Props {
+	title: string;
+	date: string;
+	location: string;
+	image: string;
+	imageAlt: string;
+	href: string;
+	badgeLines?: [string, string];
+}
+
+const { title, date, location, image, imageAlt, href, badgeLines } = Astro.props;
+---
+
+<a
+	class="min-w-[280px] w-[280px] bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant/30 overflow-hidden card-hover snap-start block focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+	data-event-card
+	data-reveal="scale"
+	href={href}
+	aria-label={`Lihat detail ${title}`}
+>
+	<div class="h-[180px] relative">
+		<img alt={imageAlt} class="w-full h-full object-cover" src={image} draggable="false" />
+		{
+			badgeLines && (
+				<div class="absolute top-3 right-3 bg-white/90 backdrop-blur-md rounded-lg shadow-sm px-2 py-1 flex items-center justify-center border border-white/20">
+					<div class="text-[9px] font-black italic text-primary leading-none text-center tracking-tighter uppercase">
+						{badgeLines[0]}
+						<br />
+						{badgeLines[1]}
+					</div>
+				</div>
+			)
+		}
+	</div>
+	<div class="p-4">
+		<h3 class="font-bold text-lg text-on-surface leading-tight mb-3">{title}</h3>
+		<div class="space-y-2">
+			<div class="flex items-center gap-2 text-on-surface-variant">
+				<span class="material-symbols-outlined text-[18px] opacity-70" data-icon="calendar_today">calendar_today</span>
+				<span class="text-xs font-medium uppercase tracking-wide">{date}</span>
+			</div>
+			<div class="flex items-center gap-2 text-on-surface-variant">
+				<span class="material-symbols-outlined text-[18px] opacity-70" data-icon="location_on">location_on</span>
+				<span class="text-xs">{location}</span>
+			</div>
+		</div>
+	</div>
+</a>

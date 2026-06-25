@@ -1,0 +1,85 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Pembayaran Gagal | Zillenial Action">
+	<div class="flex min-h-screen flex-col items-center justify-center px-gutter pb-20 pt-16 text-center">
+		<!-- Icon -->
+		<div class="mb-lg flex h-24 w-24 items-center justify-center rounded-full bg-error-container shadow-[0_8px_32px_-8px_rgba(186,26,26,0.2)]">
+			<span class="material-symbols-outlined text-[52px] text-error" data-icon="cancel">cancel</span>
+		</div>
+
+		<!-- Title -->
+		<h1 class="mb-sm font-headline-lg-mobile text-headline-lg-mobile text-on-background">Pembayaran Gagal</h1>
+		<p class="mb-md max-w-xs text-body-md text-on-surface-variant">
+			Pembayaran tidak dapat diproses. Kamu bisa mencoba lagi dengan metode lain atau hubungi tim kami.
+		</p>
+
+		<!-- Order ID -->
+		<div class="mb-lg rounded-2xl border border-outline-variant/40 bg-white px-md py-sm shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+			<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">No. Pesanan</p>
+			<p class="mt-xs font-mono text-sm font-black text-on-surface" id="failed-order-id">—</p>
+		</div>
+
+		<!-- Possible reasons -->
+		<div class="mb-xl w-full max-w-sm space-y-sm text-left">
+			<p class="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Kemungkinan penyebab</p>
+			{
+				[
+					'Saldo tidak mencukupi.',
+					'Koneksi internet terputus saat proses pembayaran.',
+					'Kartu atau rekening diblokir oleh bank.',
+					'Waktu pembayaran habis (timeout).',
+				].map((reason) => (
+					<div class="flex items-start gap-sm rounded-xl bg-surface-container-low p-sm">
+						<span
+							class="material-symbols-outlined mt-0.5 shrink-0 text-[16px] text-error"
+							data-icon="error"
+						>
+							error
+						</span>
+						<p class="text-body-sm text-on-surface">{reason}</p>
+					</div>
+				))
+			}
+		</div>
+
+		<!-- CTA -->
+		<div class="w-full max-w-sm space-y-sm">
+			<a
+				class="flex w-full items-center justify-center gap-sm rounded-2xl bg-primary px-lg py-md text-sm font-black text-on-primary shadow-[0_8px_24px_-8px_rgba(125,41,127,0.35)] transition-all active:scale-[0.98]"
+				href="/payment"
+				id="retry-payment-link"
+			>
+				<span class="material-symbols-outlined text-[18px]" data-icon="refresh">refresh</span>
+				Coba Bayar Lagi
+			</a>
+			<a
+				class="flex w-full items-center justify-center gap-sm rounded-2xl border border-outline-variant bg-white px-lg py-md text-sm font-black text-on-surface transition-all active:scale-[0.98]"
+				href="/events"
+			>
+				Kembali ke Event
+			</a>
+		</div>
+
+		<!-- Contact -->
+		<p class="mt-md text-body-sm text-on-surface-variant">
+			Butuh bantuan?
+			<a class="font-bold text-primary underline" href="https://wa.me/62" target="_blank" rel="noopener">
+				Hubungi kami via WhatsApp
+			</a>
+		</p>
+	</div>
+</Layout>
+
+<script>
+	const params = new URLSearchParams(window.location.search);
+	const orderId = params.get('order_id') ?? '—';
+	const el = document.getElementById('failed-order-id');
+	if (el) el.textContent = orderId;
+
+	const retryLink = document.getElementById('retry-payment-link');
+	if (retryLink instanceof HTMLAnchorElement && orderId !== '—') {
+		retryLink.href = `/payment?order_id=${orderId}`;
+	}
+</script>

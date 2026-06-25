@@ -1,0 +1,31 @@
+---
+import EventAgenda from '../../components/event-detail/EventAgenda.astro';
+import EventDetailHero from '../../components/event-detail/EventDetailHero.astro';
+import EventHighlights from '../../components/event-detail/EventHighlights.astro';
+import EventLocationNote from '../../components/event-detail/EventLocationNote.astro';
+import EventStickyCTA from '../../components/event-detail/EventStickyCTA.astro';
+import EventSummaryCard from '../../components/event-detail/EventSummaryCard.astro';
+import EventTickets from '../../components/event-detail/EventTickets.astro';
+import { events } from '../../data/events';
+import Layout from '../../layouts/Layout.astro';
+
+export const getStaticPaths = () =>
+	events.map((event) => ({
+		params: { slug: event.slug },
+		props: { event },
+	}));
+
+const { event } = Astro.props;
+---
+
+<Layout title={`${event.title} - Zillenial Action`}>
+	<EventDetailHero event={event} />
+	<main class="relative z-20 -mt-10 space-y-lg px-gutter pb-44">
+		<EventSummaryCard event={event} />
+		<EventHighlights event={event} />
+		<EventTickets event={event} />
+		<EventAgenda event={event} />
+		<EventLocationNote event={event} />
+	</main>
+	<EventStickyCTA event={event} />
+</Layout>

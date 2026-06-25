@@ -1,0 +1,184 @@
+---
+---
+
+<section data-reveal-scope data-form-section>
+	<h2 class="mb-md font-headline-md text-headline-md text-on-background" data-reveal>Data peserta</h2>
+	<div class="space-y-md" data-reveal-stagger>
+		{
+			[1, 2, 3].map((num) => (
+				<div
+					class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)] transition-all"
+					data-attendee-block
+					data-attendee-index={num}
+					style={num > 1 ? 'display:none' : ''}
+					data-reveal
+				>
+					<div class="mb-md flex items-center gap-sm">
+						<span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-black text-white">
+							{num}
+						</span>
+						<p class="text-sm font-black text-on-surface">
+							{num === 1 ? 'Peserta pertama (kamu)' : `Peserta ke-${num}`}
+						</p>
+					</div>
+
+					<div class="space-y-md">
+						<div>
+							<label
+								class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
+								for={`checkout-name-${num}`}
+							>
+								Nama lengkap <span class="text-error">*</span>
+							</label>
+							<div class="relative">
+								<span
+									class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+									data-icon="person"
+								>
+									person
+								</span>
+								<input
+									class="w-full rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+									id={`checkout-name-${num}`}
+									name={`attendees[${num - 1}][name]`}
+									type="text"
+									placeholder="Masukkan nama lengkap"
+									required={num === 1}
+									autocomplete={num === 1 ? 'name' : 'off'}
+									data-attendee-field
+								/>
+							</div>
+						</div>
+
+						<div>
+							<label
+								class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
+								for={`checkout-email-${num}`}
+							>
+								Email <span class="text-error">*</span>
+							</label>
+							<div class="relative">
+								<span
+									class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+									data-icon="mail"
+								>
+									mail
+								</span>
+								<input
+									class="w-full rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+									id={`checkout-email-${num}`}
+									name={`attendees[${num - 1}][email]`}
+									type="email"
+									placeholder="email@kamu.com"
+									required={num === 1}
+									autocomplete={num === 1 ? 'email' : 'off'}
+									data-attendee-field
+								/>
+							</div>
+						</div>
+
+						<div>
+							<label
+								class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
+								for={`checkout-phone-${num}`}
+							>
+								No. WhatsApp <span class="text-error">*</span>
+							</label>
+							<div class="relative">
+								<span
+									class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+									data-icon="phone"
+								>
+									phone
+								</span>
+								<input
+									class="w-full rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+									id={`checkout-phone-${num}`}
+									name={`attendees[${num - 1}][phone]`}
+									type="tel"
+									placeholder="08xxxxxxxxxx"
+									required={num === 1}
+									autocomplete={num === 1 ? 'tel' : 'off'}
+									data-attendee-field
+								/>
+							</div>
+						</div>
+
+						<div>
+							<label
+								class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
+								for={`checkout-gender-${num}`}
+							>
+								Jenis kelamin
+							</label>
+							<div class="relative">
+								<span
+									class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+									data-icon="wc"
+								>
+									wc
+								</span>
+								<select
+									class="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+									id={`checkout-gender-${num}`}
+									name={`attendees[${num - 1}][gender]`}
+								>
+									<option value="">Pilih jenis kelamin</option>
+									<option value="male">Laki-laki</option>
+									<option value="female">Perempuan</option>
+								</select>
+								<span
+									class="material-symbols-outlined pointer-events-none absolute right-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+									data-icon="expand_more"
+								>
+									expand_more
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			))
+		}
+
+		<p class="px-xs text-body-sm text-on-surface-variant" data-reveal>
+			<span class="font-bold text-error">*</span> Wajib diisi. Data digunakan untuk keperluan tiket dan konfirmasi
+			event.
+		</p>
+	</div>
+</section>
+
+<script>
+	const setupAttendeeBlocks = () => {
+		const blocks = document.querySelectorAll('[data-attendee-block]');
+		if (!blocks.length) return;
+
+		const showBlocks = (qty: number) => {
+			blocks.forEach((block) => {
+				if (!(block instanceof HTMLElement)) return;
+				const idx = Number(block.dataset.attendeeIndex);
+				const visible = idx <= qty;
+				block.style.display = visible ? '' : 'none';
+
+				// Toggle required on fields
+				block.querySelectorAll('[data-attendee-field]').forEach((field) => {
+					if (field instanceof HTMLInputElement) {
+						// First block is always required; others only when visible
+						field.required = idx === 1 ? true : visible;
+					}
+				});
+			});
+		};
+
+		// Listen for quantity changes from CheckoutTicketSelector
+		document.addEventListener('checkout:qty-change', (e) => {
+			const qty = (e as CustomEvent<{ qty: number }>).detail.qty;
+			showBlocks(qty);
+		});
+
+		// Init
+		showBlocks(1);
+	};
+
+	setupAttendeeBlocks();
+	document.addEventListener('astro:page-load', setupAttendeeBlocks);
+</script>

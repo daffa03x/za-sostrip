@@ -1,0 +1,70 @@
+---
+import type { EventDetail } from '../../data/events';
+
+interface Props {
+	event: EventDetail;
+}
+
+const { event } = Astro.props;
+---
+
+<section class="relative h-[340px] overflow-hidden rounded-b-[40px] bg-primary text-white" data-reveal="fade">
+	<img alt={event.imageAlt} class="absolute inset-0 h-full w-full object-cover" src={event.image} draggable="false" />
+	<div class="absolute inset-0 bg-gradient-to-b from-black/35 via-primary/20 to-primary/75"></div>
+	<header class="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-gutter py-sm">
+		<a
+			class="flex h-10 w-10 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md transition-all active:scale-95"
+			href="/"
+			aria-label="Kembali ke beranda"
+		>
+			<span class="material-symbols-outlined text-[22px]" data-icon="arrow_back">arrow_back</span>
+		</a>
+		<button
+			class="flex h-10 w-10 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md transition-all active:scale-95"
+			type="button"
+			aria-label={`Bagikan ${event.title}`}
+			data-share-event
+			data-share-title={event.title}
+		>
+			<span class="material-symbols-outlined text-[22px]" data-icon="ios_share">ios_share</span>
+		</button>
+	</header>
+	<div class="absolute inset-x-0 bottom-0 z-10 px-gutter pb-14 animate-reveal delay-100">
+		<h1 class="max-w-[11ch] font-headline-lg-mobile text-headline-lg-mobile text-white">{event.title}</h1>
+		<div class="mt-sm flex items-center gap-sm">
+			<span class="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md">{event.category}</span>
+			<span class="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-primary">{event.status}</span>
+		</div>
+	</div>
+</section>
+
+<script>
+	const setupShareEvent = () => {
+		const shareButton = document.querySelector('[data-share-event]');
+
+		if (!(shareButton instanceof HTMLButtonElement) || shareButton.dataset.shareReady === 'true') {
+			return;
+		}
+
+		shareButton.dataset.shareReady = 'true';
+
+		shareButton.addEventListener('click', async () => {
+			const title = shareButton.dataset.shareTitle ?? document.title;
+			const url = window.location.href;
+
+			try {
+				if (navigator.share) {
+					await navigator.share({ title, url });
+				} else if (navigator.clipboard) {
+					await navigator.clipboard.writeText(url);
+					shareButton.setAttribute('aria-label', 'Link event disalin');
+				}
+			} catch {
+				shareButton.setAttribute('aria-label', `Bagikan ${title}`);
+			}
+		});
+	};
+
+	setupShareEvent();
+	document.addEventListener('astro:page-load', setupShareEvent);
+</script>

@@ -1,0 +1,117 @@
+---
+import type { EventDetail } from '../../data/events';
+
+interface Props {
+	event: EventDetail;
+}
+
+const { event } = Astro.props;
+---
+
+<section data-reveal-scope>
+	<h2 class="mb-md font-headline-md text-headline-md text-on-background" data-reveal>Pilih tiket</h2>
+	<div class="space-y-sm" data-reveal-stagger data-ticket-selector>
+		{
+			event.tickets.map((ticket, index) => (
+				<label
+					class="flex cursor-pointer items-start gap-sm rounded-2xl border bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)] transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10 has-[:checked]:shadow-[0_8px_24px_-12px_rgba(125,41,127,0.2)] border-outline-variant/50"
+					data-reveal
+				>
+					<input
+						class="mt-1 h-4 w-4 shrink-0 accent-[#7d297f]"
+						type="radio"
+						name="ticket"
+						value={index}
+						checked={index === 0}
+						data-ticket-radio
+					/>
+					<div class="min-w-0 flex-1">
+						<div class="flex items-start justify-between gap-sm">
+							<div>
+								<h3 class="text-base font-black leading-tight text-on-surface">{ticket.name}</h3>
+								<p class="mt-1 text-body-sm text-on-surface-variant">{ticket.description}</p>
+							</div>
+							<span class="shrink-0 rounded-full bg-secondary-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-on-secondary-container">
+								{ticket.status}
+							</span>
+						</div>
+						<div class="mt-sm flex items-center justify-between rounded-xl bg-surface-container-low px-sm py-xs">
+							<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Harga / tiket</span>
+							<span class="text-sm font-black text-primary">{ticket.priceLabel}</span>
+						</div>
+					</div>
+				</label>
+			))
+		}
+	</div>
+
+	<!-- Quantity Selector -->
+	<div class="mt-md rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]" data-reveal>
+		<div class="flex items-center justify-between">
+			<div>
+				<p class="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Jumlah tiket</p>
+				<p class="mt-0.5 text-body-sm text-on-surface-variant">Maks. 3 tiket per transaksi</p>
+			</div>
+			<div class="flex items-center gap-sm">
+				<button
+					type="button"
+					class="flex h-9 w-9 items-center justify-center rounded-full border border-outline-variant bg-surface-container-low text-on-surface transition-all active:scale-90 disabled:opacity-40"
+					aria-label="Kurangi jumlah tiket"
+					data-qty-minus
+				>
+					<span class="material-symbols-outlined text-[20px]" data-icon="remove">remove</span>
+				</button>
+				<span class="w-6 text-center text-base font-black text-on-surface" data-qty-display>1</span>
+				<button
+					type="button"
+					class="flex h-9 w-9 items-center justify-center rounded-full border border-primary bg-primary-container/20 text-primary transition-all active:scale-90 disabled:opacity-40"
+					aria-label="Tambah jumlah tiket"
+					data-qty-plus
+				>
+					<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+				</button>
+			</div>
+		</div>
+		<input type="hidden" name="quantity" value="1" data-qty-value />
+	</div>
+</section>
+
+<script>
+	const setupQty = () => {
+		const minusBtn = document.querySelector('[data-qty-minus]');
+		const plusBtn = document.querySelector('[data-qty-plus]');
+		const display = document.querySelector('[data-qty-display]');
+		const hiddenInput = document.querySelector('[data-qty-value]');
+
+		if (
+			!(minusBtn instanceof HTMLButtonElement) ||
+			!(plusBtn instanceof HTMLButtonElement) ||
+			!(display instanceof HTMLElement) ||
+			!(hiddenInput instanceof HTMLInputElement)
+		) return;
+
+		const MIN = 1;
+		const MAX = 3;
+		let qty = 1;
+
+		const updateQty = (newQty: number) => {
+			qty = Math.min(MAX, Math.max(MIN, newQty));
+			display.textContent = String(qty);
+			hiddenInput.value = String(qty);
+			(minusBtn as HTMLButtonElement).disabled = qty <= MIN;
+			(plusBtn as HTMLButtonElement).disabled = qty >= MAX;
+
+			// Notify other components
+			document.dispatchEvent(new CustomEvent('checkout:qty-change', { detail: { qty } }));
+		};
+
+		minusBtn.addEventListener('click', () => updateQty(qty - 1));
+		plusBtn.addEventListener('click', () => updateQty(qty + 1));
+
+		// Init
+		updateQty(1);
+	};
+
+	setupQty();
+	document.addEventListener('astro:page-load', setupQty);
+</script>

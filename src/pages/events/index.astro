@@ -1,0 +1,19 @@
+---
+import EventListCard from '../../components/event/EventListCard.astro';
+import { events } from '../../data/events';
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Semua Event - Zillenial Action">
+	<header class="px-gutter pb-lg pt-16" data-reveal-scope>
+		<a class="mb-md inline-flex items-center gap-xs text-sm font-bold text-primary" href="/">
+			<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+			Kembali
+		</a>
+		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" data-reveal>Semua Event</h1>
+		<p class="mt-xs text-body-sm text-on-surface-variant" data-reveal>Pilih event olahraga komunitas yang ingin kamu ikuti.</p>
+	</header>
+	<main class="space-y-sm px-gutter pb-32" data-reveal-stagger>
+		{events.map((event) => <EventListCard event={event} />)}
+	</main>
+</Layout>

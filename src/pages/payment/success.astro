@@ -1,0 +1,70 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Pembayaran Berhasil | Zillenial Action">
+	<div class="flex min-h-screen flex-col items-center justify-center px-gutter pb-20 pt-16 text-center">
+		<!-- Icon -->
+		<div class="mb-lg flex h-24 w-24 items-center justify-center rounded-full bg-[#E8F5E9] shadow-[0_8px_32px_-8px_rgba(76,175,80,0.3)]">
+			<span class="material-symbols-outlined text-[52px] text-[#388E3C]" data-icon="check_circle">check_circle</span>
+		</div>
+
+		<!-- Title -->
+		<h1 class="mb-sm font-headline-lg-mobile text-headline-lg-mobile text-on-background">Pembayaran Berhasil!</h1>
+		<p class="mb-md max-w-xs text-body-md text-on-surface-variant">
+			Terima kasih! Tiketmu sudah kami proses dan akan segera dikirim ke email yang kamu daftarkan.
+		</p>
+
+		<!-- Order ID -->
+		<div class="mb-lg rounded-2xl border border-outline-variant/40 bg-white px-md py-sm shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+			<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">No. Pesanan</p>
+			<p class="mt-xs font-mono text-sm font-black text-on-surface" id="success-order-id">—</p>
+		</div>
+
+		<!-- Steps -->
+		<div class="mb-xl w-full max-w-sm space-y-sm text-left">
+			<p class="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Langkah selanjutnya</p>
+			{
+				[
+					{ icon: 'email', label: 'Cek email untuk tiket & QR code kamu.' },
+					{ icon: 'calendar_month', label: 'Simpan tanggal event di kalender.' },
+					{ icon: 'group', label: 'Ajak teman dan bagikan keseruannya!' },
+				].map((step) => (
+					<div class="flex items-start gap-sm rounded-xl bg-surface-container-low p-sm">
+						<span
+							class="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-primary"
+							data-icon={step.icon}
+						>
+							{step.icon}
+						</span>
+						<p class="text-body-sm text-on-surface">{step.label}</p>
+					</div>
+				))
+			}
+		</div>
+
+		<!-- CTA -->
+		<div class="w-full max-w-sm space-y-sm">
+			<a
+				class="flex w-full items-center justify-center gap-sm rounded-2xl bg-primary px-lg py-md text-sm font-black text-on-primary shadow-[0_8px_24px_-8px_rgba(125,41,127,0.35)] transition-all active:scale-[0.98]"
+				href="/events"
+			>
+				<span class="material-symbols-outlined text-[18px]" data-icon="explore">explore</span>
+				Lihat Event Lain
+			</a>
+			<a
+				class="flex w-full items-center justify-center gap-sm rounded-2xl border border-outline-variant bg-white px-lg py-md text-sm font-black text-on-surface transition-all active:scale-[0.98]"
+				href="/"
+			>
+				Kembali ke Beranda
+			</a>
+		</div>
+	</div>
+</Layout>
+
+<script>
+	const params = new URLSearchParams(window.location.search);
+	const orderId = params.get('order_id') ?? '—';
+	const el = document.getElementById('success-order-id');
+	if (el) el.textContent = orderId;
+</script>

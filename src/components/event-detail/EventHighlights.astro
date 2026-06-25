@@ -1,0 +1,25 @@
+---
+import type { EventDetail } from '../../data/events';
+
+interface Props {
+	event: EventDetail;
+}
+
+const { event } = Astro.props;
+---
+
+<section data-reveal-scope>
+	<h2 class="mb-md font-headline-md text-headline-md text-on-background" data-reveal>Yang kamu dapat</h2>
+	<div class="space-y-sm" data-reveal-stagger>
+		{
+			event.highlights.map((highlight) => (
+				<div class="flex gap-sm rounded-2xl border border-outline-variant/40 bg-surface-container-lowest p-md" data-reveal>
+					<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary">
+						<span class="material-symbols-outlined text-[19px]" data-icon="check">check</span>
+					</div>
+					<p class="text-body-sm text-on-surface-variant">{highlight}</p>
+				</div>
+			))
+		}
+	</div>
+</section>

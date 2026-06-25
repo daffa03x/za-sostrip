@@ -1,0 +1,198 @@
+---
+import CheckoutOrderSummary from '../../components/checkout/CheckoutOrderSummary.astro';
+import CheckoutTicketSelector from '../../components/checkout/CheckoutTicketSelector.astro';
+import CheckoutPersonalForm from '../../components/checkout/CheckoutPersonalForm.astro';
+import CheckoutVoucherAndSummary from '../../components/checkout/CheckoutVoucherAndSummary.astro';
+import CheckoutPaymentMethod from '../../components/checkout/CheckoutPaymentMethod.astro';
+import CheckoutStickyCTA from '../../components/checkout/CheckoutStickyCTA.astro';
+import { events } from '../../data/events';
+import Layout from '../../layouts/Layout.astro';
+
+export const getStaticPaths = () =>
+	events.map((event) => ({
+		params: { slug: event.slug },
+		props: { event },
+	}));
+
+const { event } = Astro.props;
+const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
+---
+
+<Layout title={`Checkout – ${event.title} | Zillenial Action`}>
+	<header class="px-gutter pb-sm pt-14" data-reveal-scope>
+		<a
+			class="mb-md inline-flex items-center gap-xs text-sm font-bold text-primary"
+			href={`/events/${event.slug}`}
+			aria-label="Kembali ke detail event"
+		>
+			<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+			Kembali
+		</a>
+		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" data-reveal>Checkout</h1>
+		<p class="mt-xs text-body-sm text-on-surface-variant" data-reveal>Lengkapi data untuk mendaftar ke event ini.</p>
+	</header>
+
+	<form
+		id="checkout-form"
+		class="space-y-lg px-gutter pb-44"
+		method="post"
+		action={backendUrl ? `${backendUrl}/checkout` : '#'}
+		data-reveal-scope
+		data-checkout-form
+		data-tickets={JSON.stringify(event.tickets.map((t) => ({ name: t.name, priceLabel: t.priceLabel, priceRaw: t.priceRaw ?? 0 })))}
+	>
+		<!-- Hidden fields -->
+		<input type="hidden" name="event_slug" value={event.slug} />
+		<input type="hidden" name="ticket_index" value="0" data-selected-ticket-index />
+
+		<!-- Order Summary (read-only header card) -->
+		<CheckoutOrderSummary event={event} selectedTicket={event.tickets[0]!} />
+
+		<!-- Ticket Selection + Quantity -->
+		<CheckoutTicketSelector event={event} />
+
+		<!-- Personal Info (up to 3 attendees) -->
+		<CheckoutPersonalForm />
+
+		<!-- Voucher & Price Summary -->
+		<CheckoutVoucherAndSummary />
+
+		<!-- Payment Method -->
+		<CheckoutPaymentMethod />
+	</form>
+
+	<!-- Sticky CTA -->
+	<CheckoutStickyCTA event={event} />
+</Layout>
+
+<script>
+	const setupCheckout = () => {
+		const form = document.querySelector('[data-checkout-form]');
+		if (!(form instanceof HTMLFormElement) || form.dataset.checkoutReady === 'true') return;
+		form.dataset.checkoutReady = 'true';
+
+		const ticketRadios = form.querySelectorAll('[data-ticket-radio]');
+		const selectedTicketInput = form.querySelector('[data-selected-ticket-index]');
+		const stickyTotal = document.querySelector('[data-sticky-total]');
+		const priceSubtotal = document.querySelector('[data-price-subtotal]');
+		const priceTotal = document.querySelector('[data-price-total]');
+		const priceQtyBadge = document.querySelector('[data-price-qty-badge]');
+
+		interface TicketData { name: string; priceLabel: string; priceRaw: number }
+		const ticketData: TicketData[] = JSON.parse(form.dataset.tickets ?? '[]');
+
+		let currentTicketIndex = 0;
+		let currentQty = 1;
+
+		const formatPrice = (raw: number): string => {
+			if (!raw) return 'Harga menyusul';
+			return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(raw);
+		};
+
+		const updatePriceDisplay = () => {
+			const ticket = ticketData[currentTicketIndex];
+			if (!ticket) return;
+
+			const perTicket = ticket.priceRaw;
+			const total = perTicket * currentQty;
+
+			const subtotalLabel = perTicket ? formatPrice(perTicket) : ticket.priceLabel;
+			const totalLabel = perTicket ? formatPrice(total) : ticket.priceLabel;
+
+			if (stickyTotal instanceof HTMLElement) stickyTotal.textContent = totalLabel;
+			if (priceSubtotal instanceof HTMLElement) priceSubtotal.textContent = subtotalLabel;
+			if (priceTotal instanceof HTMLElement) priceTotal.textContent = totalLabel;
+			if (priceQtyBadge instanceof HTMLElement) priceQtyBadge.textContent = `×${currentQty}`;
+		};
+
+		// Ticket radio change
+		ticketRadios.forEach((radio) => {
+			if (!(radio instanceof HTMLInputElement)) return;
+			radio.addEventListener('change', () => {
+				if (selectedTicketInput instanceof HTMLInputElement) {
+					selectedTicketInput.value = radio.value;
+				}
+				currentTicketIndex = Number(radio.value);
+				updatePriceDisplay();
+			});
+		});
+
+		// Quantity change from CheckoutTicketSelector
+		document.addEventListener('checkout:qty-change', (e) => {
+			currentQty = (e as CustomEvent<{ qty: number }>).detail.qty;
+			updatePriceDisplay();
+		});
+
+		// Init
+		const checkedRadio = form.querySelector('[data-ticket-radio]:checked');
+		if (checkedRadio instanceof HTMLInputElement) {
+			currentTicketIndex = Number(checkedRadio.value);
+		}
+		updatePriceDisplay();
+
+		// Form submit handler
+		form.addEventListener('submit', (e) => {
+			e.preventDefault();
+
+			const submitBtn = document.querySelector('[data-checkout-submit]');
+			if (submitBtn instanceof HTMLButtonElement) {
+				submitBtn.disabled = true;
+				submitBtn.innerHTML =
+					'<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Memproses…';
+			}
+
+			// Collect form data for the payment page
+			const ticket = ticketData[currentTicketIndex];
+			const totalPrice = ticket?.priceRaw
+				? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
+						ticket.priceRaw * currentQty,
+					)
+				: (ticket?.priceLabel ?? 'Harga menyusul');
+
+			// Build payment page URL with order context
+			const eventSlug = (form.querySelector('[name="event_slug"]') as HTMLInputElement | null)?.value ?? '';
+			const paymentMethod = (form.querySelector('[name="payment_method"]') as HTMLInputElement | null)?.value ?? '';
+			const paymentParams = new URLSearchParams({
+				order_id: `ORD-${Date.now()}`,
+				event: document.title.replace(' | Zillenial Action', '').replace('Checkout – ', ''),
+				event_slug: eventSlug,
+				ticket: ticket?.name ?? '',
+				qty: String(currentQty),
+				total: totalPrice,
+				payment_method: paymentMethod,
+			});
+
+			if (form.action === '#' || form.action.endsWith('#')) {
+				// No backend: go directly to payment UI (demo mode)
+				setTimeout(() => {
+					window.location.href = `/payment?${paymentParams.toString()}`;
+				}, 600);
+			} else {
+				// Backend configured: POST form data, backend returns redirect
+				fetch(form.action, {
+					method: 'POST',
+					body: new FormData(form),
+				})
+					.then((res) => res.json())
+					.then((data: { order_id?: string; redirect_url?: string }) => {
+						if (data.redirect_url) {
+							window.location.href = data.redirect_url;
+						} else if (data.order_id) {
+							paymentParams.set('order_id', data.order_id);
+							window.location.href = `/payment?${paymentParams.toString()}`;
+						}
+					})
+					.catch(() => {
+						if (submitBtn instanceof HTMLButtonElement) {
+							submitBtn.disabled = false;
+							submitBtn.innerHTML =
+								'<span class="material-symbols-outlined text-[18px]" data-icon="payment">payment</span> Lanjut Bayar';
+						}
+					});
+			}
+		});
+	};
+
+	setupCheckout();
+	document.addEventListener('astro:page-load', setupCheckout);
+</script>

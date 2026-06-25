@@ -1,0 +1,111 @@
+---
+---
+
+<section data-reveal-scope>
+	<h2 class="mb-md font-headline-md text-headline-md text-on-background" data-reveal>Voucher & Ringkasan</h2>
+	<div class="space-y-sm" data-reveal-stagger>
+		<!-- Voucher Input -->
+		<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]" data-reveal>
+			<p class="mb-sm text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Kode voucher</p>
+			<div class="flex gap-sm">
+				<div class="relative flex-1">
+					<span class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant" data-icon="confirmation_number">confirmation_number</span>
+					<input
+						class="w-full rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm uppercase tracking-[0.06em] text-on-surface placeholder:normal-case placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+						id="checkout-voucher"
+						name="voucher"
+						type="text"
+						placeholder="Masukkan kode voucher"
+						autocomplete="off"
+						data-voucher-input
+					/>
+				</div>
+				<button
+					class="shrink-0 rounded-xl border border-primary bg-primary-container/20 px-md py-sm text-sm font-black text-primary transition-all active:scale-95 active:bg-primary-container/40"
+					type="button"
+					data-voucher-apply
+				>
+					Pakai
+				</button>
+			</div>
+			<div class="mt-sm hidden rounded-xl bg-surface-container-low p-sm" data-voucher-message>
+				<p class="text-body-sm" data-voucher-text></p>
+			</div>
+		</div>
+
+		<!-- Price Breakdown -->
+		<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]" data-reveal>
+			<p class="mb-sm text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Rincian harga</p>
+			<div class="space-y-sm">
+				<div class="flex items-center justify-between text-sm">
+					<span class="text-on-surface-variant">
+						Harga tiket
+						<span class="ml-1 rounded-full bg-surface-container px-1.5 py-0.5 text-[10px] font-bold text-on-surface-variant" data-price-qty-badge>×1</span>
+					</span>
+					<span class="font-bold text-on-surface" data-price-subtotal>—</span>
+				</div>
+				<div class="flex items-center justify-between text-sm" data-discount-row style="display: none !important;">
+					<span class="flex items-center gap-xs text-primary">
+						<span class="material-symbols-outlined text-[16px]" data-icon="local_offer">local_offer</span>
+						Diskon voucher
+					</span>
+					<span class="font-bold text-primary" data-price-discount>—</span>
+				</div>
+				<div class="flex items-center justify-between text-sm text-on-surface-variant">
+					<span>Biaya layanan</span>
+					<span class="font-bold">Gratis</span>
+				</div>
+				<div class="h-px bg-outline-variant/40"></div>
+				<div class="flex items-center justify-between">
+					<span class="text-sm font-black text-on-surface">Total</span>
+					<span class="text-base font-black text-primary" data-price-total>Harga menyusul</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Info Note -->
+		<div class="flex gap-sm rounded-xl border border-outline-variant/30 bg-surface-container-low p-sm" data-reveal>
+			<span class="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-primary" data-icon="info">info</span>
+			<p class="text-body-sm text-on-surface-variant">
+				Tiket akan dikirim ke email masing-masing peserta setelah pembayaran dikonfirmasi. Pastikan semua email yang dimasukkan aktif.
+			</p>
+		</div>
+	</div>
+</section>
+
+<script>
+	const setupVoucher = () => {
+		const input = document.querySelector('[data-voucher-input]');
+		const applyBtn = document.querySelector('[data-voucher-apply]');
+		const messageBox = document.querySelector('[data-voucher-message]');
+		const messageText = document.querySelector('[data-voucher-text]');
+
+		if (
+			!(input instanceof HTMLInputElement) ||
+			!(applyBtn instanceof HTMLButtonElement) ||
+			!(messageBox instanceof HTMLElement) ||
+			!(messageText instanceof HTMLElement)
+		) {
+			return;
+		}
+
+		applyBtn.addEventListener('click', () => {
+			const code = input.value.trim().toUpperCase();
+
+			if (!code) {
+				messageBox.classList.remove('hidden');
+				messageText.textContent = 'Masukkan kode voucher terlebih dahulu.';
+				messageText.className = 'text-body-sm text-error';
+				return;
+			}
+
+			// Placeholder: voucher validation via backend
+			messageBox.classList.remove('hidden');
+			messageText.textContent = `Voucher "${code}" akan divalidasi saat pembayaran diproses.`;
+			messageText.className = 'text-body-sm text-on-surface-variant';
+		});
+	};
+
+	setupVoucher();
+	document.addEventListener('astro:page-load', setupVoucher);
+</script>

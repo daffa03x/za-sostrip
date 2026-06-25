@@ -1,0 +1,23 @@
+---
+import EventListCard from '../event/EventListCard.astro';
+import { events } from '../../data/events';
+
+const previewEvents = events.slice(0, 5);
+---
+
+<section class="animate-reveal delay-100" aria-labelledby="event-list-title" data-reveal-scope>
+	<div class="mb-md flex items-end justify-between gap-sm">
+		<h2 id="event-list-title" class="font-headline-md text-headline-md text-on-background">Event Terbaru</h2>
+		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">{previewEvents.length} event</span>
+	</div>
+	<div class="space-y-sm" data-reveal-stagger>
+		{previewEvents.map((event) => <EventListCard event={event} />)}
+	</div>
+	<a
+		class="mt-md flex min-h-12 w-full items-center justify-center rounded-full border border-outline-variant bg-white px-md text-sm font-black text-primary shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)] transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+		href="/events"
+		data-reveal
+	>
+		Lihat Semua
+	</a>
+</section>

@@ -1,0 +1,136 @@
+---
+// Daftar mitra/sponsor dengan nama file di public/mitra/ dan label tampilan
+const mitraList = [
+  { file: 'Logo Raihmimpi-2023-01 (1).png',           alt: 'Raih Mimpi'   },
+  { file: 'logo diferensia baru (1) (1).png',         alt: 'Diferensia'   },
+  { file: '5. pt yooka LOGO UTAMA TANPA BG.png',      alt: 'PT Yooka'     },
+  { file: '1. logo-kitabisa.png',                    alt: 'Kitabisa'     },
+  { file: 'Logo Primary_Beri Dampak-01.png',          alt: 'Beri Dampak'  },
+  { file: 'LOGO_RZ (1).png',                          alt: 'Rumah Zakat'  },
+  { file: 'zis.png',                                  alt: 'ZIS'          },
+  { file: 'Logo RKP.png',                             alt: 'RKP'          },
+  { file: 'Logo FH_square.png',                       alt: 'FH'           },
+  { file: 'Artboard 1SH.png',                         alt: 'Mitra'        },
+  { file: 'Main colored.png',                         alt: 'Mitra'        },
+];
+
+// Encode nama file agar URL aman meski ada spasi/tanda kurung
+function encodePath(filename: string): string {
+  return '/mitra/' + filename.split('').map(c => {
+    const safe = /[A-Za-z0-9\-._~]/.test(c);
+    return safe ? c : encodeURIComponent(c);
+  }).join('');
+}
+---
+
+<section class="sponsor-section" aria-labelledby="sponsor-heading">
+  <div class="sponsor-inner">
+    <h2 id="sponsor-heading" class="sponsor-title">Didukung oleh</h2>
+    <p class="sponsor-subtitle">Terima kasih kepada seluruh mitra dan sponsor yang mendukung Sostrip / Zillenial Action.</p>
+
+    <div class="sponsor-grid" role="list">
+      {mitraList.map((mitra) => (
+        <div class="sponsor-item" role="listitem">
+          <img
+            src={encodePath(mitra.file)}
+            alt={`Logo ${mitra.alt}`}
+            width="160"
+            height="80"
+            loading="lazy"
+            decoding="async"
+            class="sponsor-logo"
+          />
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .sponsor-section {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .sponsor-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+  }
+
+  .sponsor-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .sponsor-subtitle {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-bottom: 2rem;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .sponsor-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem 2rem;
+  }
+
+  .sponsor-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    min-width: 120px;
+  }
+
+  .sponsor-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .sponsor-logo {
+    max-width: 140px;
+    max-height: 72px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter: grayscale(20%);
+    transition: filter 0.2s ease;
+    display: block;
+  }
+
+  .sponsor-item:hover .sponsor-logo {
+    filter: grayscale(0%);
+  }
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    .sponsor-grid {
+      gap: 1rem;
+    }
+    .sponsor-item {
+      min-width: 100px;
+      padding: 0.6rem 0.75rem;
+    }
+    .sponsor-logo {
+      max-width: 110px;
+      max-height: 56px;
+    }
+  }
+</style>
