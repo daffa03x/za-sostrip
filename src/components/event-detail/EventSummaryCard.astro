@@ -14,19 +14,19 @@ const { event } = Astro.props;
 			<span class="material-symbols-outlined mt-0.5 text-[20px] text-primary" data-icon="calendar_today">calendar_today</span>
 			<div>
 				<p class="font-label-md text-label-md uppercase text-on-surface-variant">Tanggal</p>
-				<p class="font-bold leading-tight">{event.date}</p>
+				<p class="font-bold leading-tight" data-bind="date">{event.date}</p>
 			</div>
 		</div>
 		<div class="flex items-start gap-sm text-on-surface">
 			<span class="material-symbols-outlined mt-0.5 text-[20px] text-primary" data-icon="location_on">location_on</span>
 			<div>
 				<p class="font-label-md text-label-md uppercase text-on-surface-variant">Lokasi</p>
-				<p class="font-bold leading-tight">{event.location}</p>
+				<p class="font-bold leading-tight" data-bind="location">{event.location}</p>
 			</div>
 		</div>
 	</div>
 
-	<p class="text-body-sm text-on-surface-variant">{event.summary}</p>
+	<p class="text-body-sm text-on-surface-variant" data-bind="summary">{event.summary}</p>
 
 	<div class="mt-md grid grid-cols-3 gap-sm" data-reveal-stagger>
 		{

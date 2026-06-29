@@ -1,0 +1,74 @@
+---
+import EventAgenda from '../../components/event-detail/EventAgenda.astro';
+import EventDetailHero from '../../components/event-detail/EventDetailHero.astro';
+import EventHighlights from '../../components/event-detail/EventHighlights.astro';
+import EventLocationNote from '../../components/event-detail/EventLocationNote.astro';
+import EventStickyCTA from '../../components/event-detail/EventStickyCTA.astro';
+import EventSummaryCard from '../../components/event-detail/EventSummaryCard.astro';
+import EventTickets from '../../components/event-detail/EventTickets.astro';
+import Layout from '../../layouts/Layout.astro';
+import type { EventDetail } from '../../data/events';
+
+// Kerangka placeholder; data asli diisi di browser berdasarkan ?slug.
+const skeleton: EventDetail = {
+	slug: '', title: 'Memuat…', date: '—', location: '—', venue: '—', category: '—',
+	status: '—', image: '', imageAlt: '', summary: '', impactNote: '', stats: [],
+	highlights: [], tickets: [], agenda: [], notes: [],
+};
+---
+
+<Layout title="Detail Event | Zillenial Action">
+	<EventDetailHero event={skeleton} />
+	<main class="relative z-20 -mt-10 space-y-lg px-gutter pb-44">
+		<EventSummaryCard event={skeleton} />
+		<EventHighlights event={skeleton} />
+		<EventTickets event={skeleton} />
+		<EventAgenda event={skeleton} />
+		<EventLocationNote event={skeleton} />
+	</main>
+	<EventStickyCTA event={skeleton} />
+</Layout>
+
+<script>
+	import { api } from '../../lib/api';
+	import { mapToEventDetail } from '../../lib/mappers';
+	import { bind, renderList, queryParam } from '../../lib/csr';
+
+	const load = async () => {
+		const slug = queryParam('slug');
+		if (!slug) { window.location.replace('/events'); return; }
+
+		try {
+			const res = await api.events.show(slug);
+			const event = mapToEventDetail(res.data);
+
+			document.title = `${event.title} - Zillenial Action`;
+
+			bind(document, {
+				title: event.title,
+				category: event.category,
+				status: event.status,
+				image: event.image,
+				imageAlt: event.imageAlt,
+				date: event.date,
+				location: event.location,
+				summary: event.summary,
+				venue: event.venue,
+				impactNote: event.impactNote,
+				price: event.tickets[0]?.priceLabel ?? 'Info menyusul',
+				href: `/checkout/detail?slug=${encodeURIComponent(event.slug)}`,
+			});
+
+			renderList('[data-tickets-list]', '[data-tickets-tpl]', event.tickets.map((t) => ({
+				name: t.name, description: t.description, status: t.status, priceLabel: t.priceLabel,
+			})));
+
+			renderList('[data-notes-list]', '[data-notes-tpl]', event.notes.map((text) => ({ text })));
+		} catch {
+			window.location.replace('/events');
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
+</script>

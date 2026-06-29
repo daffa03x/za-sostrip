@@ -1,40 +1,15 @@
----
-import type { PaymentMethod } from '../../lib/api';
-
-interface Props {
-	paymentMethods: PaymentMethod[];
-}
-const { paymentMethods } = Astro.props;
----
-
 <div class="rounded-2xl bg-surface-container-low p-md" data-reveal-scope>
 	<h2 class="mb-sm font-title-md text-title-md text-on-surface" data-reveal>Metode Pembayaran</h2>
 
-	{paymentMethods.length === 0 ? (
-		<p class="text-sm text-on-surface-variant">Tidak ada metode pembayaran yang tersedia.</p>
-	) : (
-		<div class="space-y-sm" data-reveal-stagger>
-			{paymentMethods.map((pm, i) => (
-				<label class="flex cursor-pointer items-center gap-sm rounded-xl border border-outline-variant bg-surface p-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-container/30">
-					<input
-						type="radio"
-						name="payment_method_id"
-						value={pm.id}
-						class="h-4 w-4 accent-primary"
-						required={i === 0}
-						checked={i === 0}
-					/>
-					{pm.image && (
-						<img
-							src={pm.image}
-							alt={pm.name}
-							class="h-6 w-auto max-w-[72px] object-contain"
-							loading="lazy"
-						/>
-					)}
-					<span class="flex-1 text-sm font-bold text-on-surface">{pm.name}</span>
-				</label>
-			))}
-		</div>
-	)}
+	<div class="space-y-sm" data-reveal-stagger data-pm-list>
+		<p class="text-sm text-on-surface-variant" data-pm-loading>Memuat metode pembayaran…</p>
+	</div>
+
+	<template data-pm-tpl>
+		<label class="flex cursor-pointer items-center gap-sm rounded-xl border border-outline-variant bg-surface p-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-container/30">
+			<input type="radio" name="payment_method_id" class="h-4 w-4 accent-primary" data-pm-radio />
+			<img class="hidden h-6 w-auto max-w-[72px] object-contain" loading="lazy" data-pm-image data-bind-src="image" data-bind-alt="name" />
+			<span class="flex-1 text-sm font-bold text-on-surface" data-bind="name"></span>
+		</label>
+	</template>
 </div>

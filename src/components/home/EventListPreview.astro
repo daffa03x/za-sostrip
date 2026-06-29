@@ -1,25 +1,20 @@
 ---
 import EventListCard from '../event/EventListCard.astro';
-import { api } from '../../lib/api';
-import { mapListItemToEventDetail } from '../../lib/mappers';
-
-let previewEvents: ReturnType<typeof mapListItemToEventDetail>[] = [];
-try {
-	const res = await api.events.list({ per_page: 5 });
-	previewEvents = res.data.map(mapListItemToEventDetail);
-} catch {
-	// Tampilkan kosong jika API tidak tersedia
-}
 ---
 
 <section class="animate-reveal delay-100" aria-labelledby="event-list-title" data-reveal-scope>
 	<div class="mb-md flex items-end justify-between gap-sm">
 		<h2 id="event-list-title" class="font-headline-md text-headline-md text-on-background">Sosial Trip</h2>
-		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">{previewEvents.length} sosial trip</span>
+		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary" data-preview-count>0 sosial trip</span>
 	</div>
-	<div class="space-y-sm" data-reveal-stagger>
-		{previewEvents.map((event) => <EventListCard event={event} />)}
+	<div class="space-y-sm" data-reveal-stagger data-preview-list>
+		<p class="py-md text-center text-sm text-on-surface-variant">Memuat sosial trip…</p>
 	</div>
+
+	<template data-preview-tpl>
+		<EventListCard event={{ slug: '', title: '', date: '', location: '', venue: '', category: '', status: '', image: '', imageAlt: '', summary: '', impactNote: '', stats: [], highlights: [], tickets: [], agenda: [], notes: [] }} />
+	</template>
+
 	<a
 		class="mt-md flex min-h-12 w-full items-center justify-center rounded-full border border-outline-variant bg-white px-md text-sm font-black text-primary shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)] transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
 		href="/events"
@@ -28,3 +23,47 @@ try {
 		Lihat Semua
 	</a>
 </section>
+
+<script>
+	import { api } from '../../lib/api';
+	import { mapListItemToEventDetail } from '../../lib/mappers';
+	import { renderList } from '../../lib/csr';
+
+	const load = async () => {
+		const list = document.querySelector('[data-preview-list]');
+		const count = document.querySelector('[data-preview-count]');
+		if (!(list instanceof HTMLElement) || list.dataset.previewReady === 'true') return;
+		list.dataset.previewReady = 'true';
+
+		try {
+			const res = await api.events.list({ per_page: 5 });
+			const events = res.data.map(mapListItemToEventDetail);
+			if (count instanceof HTMLElement) count.textContent = `${events.length} sosial trip`;
+
+			if (events.length === 0) {
+				list.innerHTML = '<p class="py-md text-center text-sm text-on-surface-variant">Belum ada event yang tersedia.</p>';
+				return;
+			}
+
+			renderList(
+				'[data-preview-list]',
+				'[data-preview-tpl]',
+				events.map((event) => ({
+					href: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
+					image: event.image,
+					imageAlt: event.imageAlt,
+					category: event.category,
+					title: event.title,
+					date: event.date,
+					location: event.location,
+				})),
+			);
+		} catch {
+			if (count instanceof HTMLElement) count.textContent = '0 sosial trip';
+			list.innerHTML = '<p class="py-md text-center text-sm text-on-surface-variant">Belum ada event yang tersedia.</p>';
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
+</script>

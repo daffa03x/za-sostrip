@@ -13,16 +13,18 @@ const { event, selectedTicket } = Astro.props;
 	<div class="relative h-[120px]">
 		<img
 			alt={event.imageAlt}
+			data-bind-alt="imageAlt"
 			class="absolute inset-0 h-full w-full object-cover"
 			src={event.image}
+			data-bind-src="image"
 			draggable="false"
 		/>
 		<div class="absolute inset-0 bg-gradient-to-b from-black/20 to-primary/70"></div>
 		<div class="absolute inset-x-0 bottom-0 px-md pb-md">
-			<span class="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md">
+			<span class="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md" data-bind="category">
 				{event.category}
 			</span>
-			<h2 class="mt-1 font-headline-md text-[18px] font-black leading-tight text-white">{event.title}</h2>
+			<h2 class="mt-1 font-headline-md text-[18px] font-black leading-tight text-white" data-bind="title">{event.title}</h2>
 		</div>
 	</div>
 
@@ -32,14 +34,14 @@ const { event, selectedTicket } = Astro.props;
 				<span class="material-symbols-outlined mt-0.5 text-[18px] text-primary" data-icon="calendar_today">calendar_today</span>
 				<div>
 					<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Tanggal</p>
-					<p class="text-sm font-bold leading-tight">{event.date}</p>
+					<p class="text-sm font-bold leading-tight" data-bind="date">{event.date}</p>
 				</div>
 			</div>
 			<div class="flex items-center gap-sm text-on-surface">
 				<span class="material-symbols-outlined mt-0.5 text-[18px] text-primary" data-icon="location_on">location_on</span>
 				<div>
 					<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Lokasi</p>
-					<p class="text-sm font-bold leading-tight">{event.venue}, {event.location}</p>
+					<p class="text-sm font-bold leading-tight"><span data-bind="venue">{event.venue}</span>, <span data-bind="location">{event.location}</span></p>
 				</div>
 			</div>
 		</div>
@@ -48,10 +50,10 @@ const { event, selectedTicket } = Astro.props;
 			<div class="flex items-start justify-between gap-sm">
 				<div class="flex-1">
 					<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Tiket dipilih</p>
-					<p class="mt-0.5 text-sm font-black leading-tight text-on-surface">{selectedTicket.name}</p>
-					<p class="mt-0.5 text-body-sm text-on-surface-variant">{selectedTicket.description}</p>
+					<p class="mt-0.5 text-sm font-black leading-tight text-on-surface" data-bind="summaryTicketName">{selectedTicket.name}</p>
+					<p class="mt-0.5 text-body-sm text-on-surface-variant" data-bind="summaryTicketDescription">{selectedTicket.description}</p>
 				</div>
-				<span class="shrink-0 text-sm font-black text-primary">{selectedTicket.priceLabel}</span>
+				<span class="shrink-0 text-sm font-black text-primary" data-bind="summaryTicketPrice">{selectedTicket.priceLabel}</span>
 			</div>
 		</div>
 	</div>

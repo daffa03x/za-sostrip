@@ -5,39 +5,29 @@ import CheckoutPersonalForm from '../../components/checkout/CheckoutPersonalForm
 import CheckoutVoucherAndSummary from '../../components/checkout/CheckoutVoucherAndSummary.astro';
 import CheckoutPaymentMethod from '../../components/checkout/CheckoutPaymentMethod.astro';
 import CheckoutStickyCTA from '../../components/checkout/CheckoutStickyCTA.astro';
-import { api } from '../../lib/api';
-import { mapToEventDetail } from '../../lib/mappers';
-import type { PaymentMethod } from '../../lib/api';
 import Layout from '../../layouts/Layout.astro';
+import type { EventDetail, EventTicket } from '../../data/events';
 
-const { slug } = Astro.params;
+// Kerangka placeholder; data asli diisi di browser berdasarkan ?slug.
+const skeleton: EventDetail = {
+	slug: '', title: 'Memuat…', date: '—', location: '—', venue: '—', category: '—',
+	status: '—', image: '', imageAlt: '', summary: '', impactNote: '', stats: [],
+	highlights: [], tickets: [], agenda: [], notes: [],
+};
+const placeholderTicket: EventTicket = { name: '—', priceLabel: '—', priceRaw: 0, description: '', status: '' };
 
-let event;
-let eventId = 0;
-let paymentMethods: PaymentMethod[] = [];
-
-try {
-	const [eventRes, pmRes] = await Promise.all([
-		api.events.show(slug!),
-		api.paymentMethods.list(),
-	]);
-	event = mapToEventDetail(eventRes.data);
-	eventId = eventRes.data.id;
-	paymentMethods = pmRes.data;
-} catch {
-	return Astro.redirect('/events');
-}
-
+// Env PUBLIC_* di-inline saat build.
 const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
 const snapUrl = import.meta.env.PUBLIC_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
 const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 ---
 
-<Layout title={`Checkout – ${event.title} | Zillenial Action`}>
+<Layout title="Checkout | Zillenial Action">
 	<header class="px-gutter pb-sm pt-14" data-reveal-scope>
 		<a
 			class="mb-md inline-flex items-center gap-xs text-sm font-bold text-primary"
-			href={`/events/${event.slug}`}
+			href="/events"
+			data-bind-href="backHref"
 			aria-label="Kembali ke detail event"
 		>
 			<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
@@ -52,26 +42,30 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		class="space-y-lg px-gutter pb-44"
 		data-reveal-scope
 		data-checkout-form
-		data-event-slug={event.slug}
-		data-event-id={eventId}
+		data-event-slug=""
+		data-event-id="0"
 		data-backend-url={backendUrl}
 		data-snap-url={snapUrl}
 		data-snap-client-key={snapClientKey}
-		data-tickets={JSON.stringify(event.tickets.map((t) => ({ name: t.name, priceLabel: t.priceLabel, priceRaw: t.priceRaw ?? 0 })))}
+		data-tickets="[]"
 	>
 		<input type="hidden" name="ticket_index" value="0" data-selected-ticket-index />
 
-		<CheckoutOrderSummary event={event} selectedTicket={event.tickets[0]!} />
-		<CheckoutTicketSelector event={event} />
+		<CheckoutOrderSummary event={skeleton} selectedTicket={placeholderTicket} />
+		<CheckoutTicketSelector event={skeleton} />
 		<CheckoutPersonalForm />
 		<CheckoutVoucherAndSummary />
-		<CheckoutPaymentMethod paymentMethods={paymentMethods} />
+		<CheckoutPaymentMethod />
 	</form>
 
-	<CheckoutStickyCTA event={event} />
+	<CheckoutStickyCTA event={skeleton} />
 </Layout>
 
 <script>
+	import { api } from '../../lib/api';
+	import { mapToEventDetail } from '../../lib/mappers';
+	import { bind, renderList, queryParam } from '../../lib/csr';
+
 	declare global {
 		interface Window {
 			snap: { pay: (token: string, options: Record<string, unknown>) => void };
@@ -90,6 +84,7 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		});
 	}
 
+	// Setup interaksi checkout (harga, submit) — dijalankan SETELAH data dirender.
 	const setupCheckout = () => {
 		const form = document.querySelector('[data-checkout-form]');
 		if (!(form instanceof HTMLFormElement) || form.dataset.checkoutReady === 'true') return;
@@ -180,7 +175,7 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			}
 
 			const paymentMethodId = parseInt(
-				form.querySelector<HTMLInputElement>('[name="payment_method_id"]')?.value ?? '0', 10
+				form.querySelector<HTMLInputElement>('[name="payment_method_id"]:checked')?.value ?? '0', 10
 			);
 
 			if (!paymentMethodId) { alert('Pilih metode pembayaran terlebih dahulu.'); resetBtn(); return; }
@@ -221,6 +216,85 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		});
 	};
 
-	setupCheckout();
-	document.addEventListener('astro:page-load', setupCheckout);
+	// Ambil data event + metode pembayaran, render, lalu init checkout.
+	const load = async () => {
+		const form = document.querySelector('[data-checkout-form]');
+		if (!(form instanceof HTMLFormElement)) return;
+
+		const slug = queryParam('slug');
+		if (!slug) { window.location.replace('/events'); return; }
+
+		try {
+			const [eventRes, pmRes] = await Promise.all([
+				api.events.show(slug),
+				api.paymentMethods.list(),
+			]);
+			const event = mapToEventDetail(eventRes.data);
+			const eventId = eventRes.data.id;
+			const paymentMethods = pmRes.data;
+			const firstTicket = event.tickets[0];
+
+			document.title = `Checkout – ${event.title} | Zillenial Action`;
+
+			// Isi field statis
+			bind(document, {
+				image: event.image,
+				imageAlt: event.imageAlt,
+				category: event.category,
+				title: event.title,
+				date: event.date,
+				venue: event.venue,
+				location: event.location,
+				summaryTicketName: firstTicket?.name ?? '—',
+				summaryTicketDescription: firstTicket?.description ?? '',
+				summaryTicketPrice: firstTicket?.priceLabel ?? '—',
+				backHref: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
+			});
+
+			// Render daftar tiket
+			renderList('[data-ticket-list]', '[data-ticket-tpl]', event.tickets.map((t) => ({
+				name: t.name, description: t.description, status: t.status, priceLabel: t.priceLabel,
+			})), (node, _item, i) => {
+				const radio = node.querySelector('[data-ticket-radio]');
+				if (radio instanceof HTMLInputElement) {
+					radio.value = String(i);
+					radio.checked = i === 0;
+				}
+			});
+
+			// Render metode pembayaran
+			if (paymentMethods.length === 0) {
+				const list = document.querySelector('[data-pm-list]');
+				if (list instanceof HTMLElement) list.innerHTML = '<p class="text-sm text-on-surface-variant">Tidak ada metode pembayaran yang tersedia.</p>';
+			} else {
+				renderList('[data-pm-list]', '[data-pm-tpl]', paymentMethods.map((pm) => ({
+					name: pm.name, image: pm.image ?? '',
+				})), (node, item, i) => {
+					const radio = node.querySelector('[data-pm-radio]');
+					if (radio instanceof HTMLInputElement) {
+						radio.value = String(paymentMethods[i]!.id);
+						radio.checked = i === 0;
+						radio.required = i === 0;
+					}
+					const img = node.querySelector('[data-pm-image]');
+					if (img instanceof HTMLImageElement && item.image) img.classList.remove('hidden');
+					else if (img) img.remove();
+				});
+			}
+
+			// Isi dataset form untuk skrip harga & submit
+			form.dataset.eventSlug = event.slug;
+			form.dataset.eventId = String(eventId);
+			form.dataset.tickets = JSON.stringify(
+				event.tickets.map((t) => ({ name: t.name, priceLabel: t.priceLabel, priceRaw: t.priceRaw ?? 0 })),
+			);
+
+			setupCheckout();
+		} catch {
+			window.location.replace('/events');
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
 </script>

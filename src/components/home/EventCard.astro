@@ -17,10 +17,11 @@ const { title, date, location, image, imageAlt, href, badgeLines } = Astro.props
 	data-event-card
 	data-reveal="scale"
 	href={href}
+	data-bind-href="href"
 	aria-label={`Lihat detail ${title}`}
 >
 	<div class="h-[180px] relative">
-		<img alt={imageAlt} class="w-full h-full object-cover" src={image} draggable="false" />
+		<img alt={imageAlt} data-bind-alt="imageAlt" class="w-full h-full object-cover" src={image} data-bind-src="image" draggable="false" />
 		{
 			badgeLines && (
 				<div class="absolute top-3 right-3 bg-white/90 backdrop-blur-md rounded-lg shadow-sm px-2 py-1 flex items-center justify-center border border-white/20">
@@ -34,15 +35,15 @@ const { title, date, location, image, imageAlt, href, badgeLines } = Astro.props
 		}
 	</div>
 	<div class="p-4">
-		<h3 class="font-bold text-lg text-on-surface leading-tight mb-3">{title}</h3>
+		<h3 class="font-bold text-lg text-on-surface leading-tight mb-3" data-bind="title">{title}</h3>
 		<div class="space-y-2">
 			<div class="flex items-center gap-2 text-on-surface-variant">
 				<span class="material-symbols-outlined text-[18px] opacity-70" data-icon="calendar_today">calendar_today</span>
-				<span class="text-xs font-medium uppercase tracking-wide">{date}</span>
+				<span class="text-xs font-medium uppercase tracking-wide" data-bind="date">{date}</span>
 			</div>
 			<div class="flex items-center gap-2 text-on-surface-variant">
 				<span class="material-symbols-outlined text-[18px] opacity-70" data-icon="location_on">location_on</span>
-				<span class="text-xs">{location}</span>
+				<span class="text-xs" data-bind="location">{location}</span>
 			</div>
 		</div>
 	</div>

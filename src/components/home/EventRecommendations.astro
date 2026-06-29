@@ -1,15 +1,5 @@
 ---
-import { api } from '../../lib/api';
-import { mapListItemToEventDetail } from '../../lib/mappers';
 import EventCard from './EventCard.astro';
-
-let events: ReturnType<typeof mapListItemToEventDetail>[] = [];
-try {
-	const res = await api.events.list({ per_page: 6 });
-	events = res.data.map(mapListItemToEventDetail);
-} catch {
-	// Tampilkan kosong jika API tidak tersedia
-}
 ---
 
 <section class="relative z-20 -mt-[165px]" data-event-carousel data-reveal-scope>
@@ -41,19 +31,52 @@ try {
 		class="flex overflow-x-auto gap-md no-scrollbar pb-sm -mx-gutter px-gutter animate-reveal delay-300 snap-x snap-mandatory scroll-px-gutter touch-pan-x cursor-grab select-none"
 		role="list"
 		aria-label="Daftar rekomendasi event"
+		data-rec-list
 	>
-		{events.length > 0
-			? events.map((event) => (
-					<EventCard
-						title={event.title}
-						date={event.date}
-						location={event.location}
-						image={event.image}
-						imageAlt={event.imageAlt}
-						href={`/events/${event.slug}`}
-					/>
-				))
-			: <p class="text-white/70 text-sm py-lg">Belum ada sosial trip tersedia.</p>
-		}
+		<p class="text-white/70 text-sm py-lg">Memuat sosial trip…</p>
 	</div>
+
+	<template data-rec-tpl>
+		<EventCard title="" date="" location="" image="" imageAlt="" href="#" />
+	</template>
 </section>
+
+<script>
+	import { api } from '../../lib/api';
+	import { mapListItemToEventDetail } from '../../lib/mappers';
+	import { renderList } from '../../lib/csr';
+
+	const load = async () => {
+		const list = document.querySelector('[data-rec-list]');
+		if (!(list instanceof HTMLElement) || list.dataset.recReady === 'true') return;
+		list.dataset.recReady = 'true';
+
+		try {
+			const res = await api.events.list({ per_page: 6 });
+			const events = res.data.map(mapListItemToEventDetail);
+
+			if (events.length === 0) {
+				list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada sosial trip tersedia.</p>';
+				return;
+			}
+
+			renderList(
+				'[data-rec-list]',
+				'[data-rec-tpl]',
+				events.map((event) => ({
+					title: event.title,
+					date: event.date,
+					location: event.location,
+					image: event.image,
+					imageAlt: event.imageAlt,
+					href: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
+				})),
+			);
+		} catch {
+			list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada sosial trip tersedia.</p>';
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
+</script>

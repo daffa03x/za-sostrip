@@ -9,7 +9,7 @@ const { event } = Astro.props;
 ---
 
 <section class="relative h-[340px] overflow-hidden rounded-b-[40px] bg-primary text-white" data-reveal="fade">
-	<img alt={event.imageAlt} class="absolute inset-0 h-full w-full object-cover" src={event.image} draggable="false" />
+	<img alt={event.imageAlt} data-bind-alt="imageAlt" class="absolute inset-0 h-full w-full object-cover" src={event.image} data-bind-src="image" draggable="false" />
 	<div class="absolute inset-0 bg-gradient-to-b from-black/35 via-primary/20 to-primary/75"></div>
 	<header class="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-gutter py-sm">
 		<a
@@ -30,10 +30,10 @@ const { event } = Astro.props;
 		</button>
 	</header>
 	<div class="absolute inset-x-0 bottom-0 z-10 px-gutter pb-14 animate-reveal delay-100">
-		<h1 class="max-w-[11ch] font-headline-lg-mobile text-headline-lg-mobile text-white">{event.title}</h1>
+		<h1 class="max-w-[11ch] font-headline-lg-mobile text-headline-lg-mobile text-white" data-bind="title">{event.title}</h1>
 		<div class="mt-sm flex items-center gap-sm">
-			<span class="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md">{event.category}</span>
-			<span class="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-primary">{event.status}</span>
+			<span class="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md" data-bind="category">{event.category}</span>
+			<span class="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-primary" data-bind="status">{event.status}</span>
 		</div>
 	</div>
 </section>
