@@ -1,0 +1,12 @@
+name = "za-sostrip"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Tambah environment variables di Cloudflare Dashboard → Settings → Variables
+# PUBLIC_BACKEND_URL = "https://your-backend.com"
+# PUBLIC_MIDTRANS_CLIENT_KEY = ""
+# PUBLIC_MIDTRANS_SNAP_URL = "https://app.midtrans.com/snap/snap.js"
+
+[[assets]]
+directory = "./dist/client"
