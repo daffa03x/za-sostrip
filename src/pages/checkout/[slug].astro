@@ -5,17 +5,32 @@ import CheckoutPersonalForm from '../../components/checkout/CheckoutPersonalForm
 import CheckoutVoucherAndSummary from '../../components/checkout/CheckoutVoucherAndSummary.astro';
 import CheckoutPaymentMethod from '../../components/checkout/CheckoutPaymentMethod.astro';
 import CheckoutStickyCTA from '../../components/checkout/CheckoutStickyCTA.astro';
-import { events } from '../../data/events';
+import { api } from '../../lib/api';
+import { mapToEventDetail } from '../../lib/mappers';
+import type { PaymentMethod } from '../../lib/api';
 import Layout from '../../layouts/Layout.astro';
 
-export const getStaticPaths = () =>
-	events.map((event) => ({
-		params: { slug: event.slug },
-		props: { event },
-	}));
+const { slug } = Astro.params;
 
-const { event } = Astro.props;
+let event;
+let eventId = 0;
+let paymentMethods: PaymentMethod[] = [];
+
+try {
+	const [eventRes, pmRes] = await Promise.all([
+		api.events.show(slug!),
+		api.paymentMethods.list(),
+	]);
+	event = mapToEventDetail(eventRes.data);
+	eventId = eventRes.data.id;
+	paymentMethods = pmRes.data;
+} catch {
+	return Astro.redirect('/events');
+}
+
 const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
+const snapUrl = import.meta.env.PUBLIC_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
+const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 ---
 
 <Layout title={`Checkout – ${event.title} | Zillenial Action`}>
@@ -35,37 +50,46 @@ const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
 	<form
 		id="checkout-form"
 		class="space-y-lg px-gutter pb-44"
-		method="post"
-		action={backendUrl ? `${backendUrl}/checkout` : '#'}
 		data-reveal-scope
 		data-checkout-form
+		data-event-slug={event.slug}
+		data-event-id={eventId}
+		data-backend-url={backendUrl}
+		data-snap-url={snapUrl}
+		data-snap-client-key={snapClientKey}
 		data-tickets={JSON.stringify(event.tickets.map((t) => ({ name: t.name, priceLabel: t.priceLabel, priceRaw: t.priceRaw ?? 0 })))}
 	>
-		<!-- Hidden fields -->
-		<input type="hidden" name="event_slug" value={event.slug} />
 		<input type="hidden" name="ticket_index" value="0" data-selected-ticket-index />
 
-		<!-- Order Summary (read-only header card) -->
 		<CheckoutOrderSummary event={event} selectedTicket={event.tickets[0]!} />
-
-		<!-- Ticket Selection + Quantity -->
 		<CheckoutTicketSelector event={event} />
-
-		<!-- Personal Info (up to 3 attendees) -->
 		<CheckoutPersonalForm />
-
-		<!-- Voucher & Price Summary -->
 		<CheckoutVoucherAndSummary />
-
-		<!-- Payment Method -->
-		<CheckoutPaymentMethod />
+		<CheckoutPaymentMethod paymentMethods={paymentMethods} />
 	</form>
 
-	<!-- Sticky CTA -->
 	<CheckoutStickyCTA event={event} />
 </Layout>
 
 <script>
+	declare global {
+		interface Window {
+			snap: { pay: (token: string, options: Record<string, unknown>) => void };
+		}
+	}
+
+	function loadSnap(snapUrl: string, clientKey: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if (typeof window.snap !== 'undefined') { resolve(); return; }
+			const s = document.createElement('script');
+			s.src = snapUrl;
+			s.setAttribute('data-client-key', clientKey);
+			s.onload = () => resolve();
+			s.onerror = () => reject(new Error('Gagal memuat Snap.js'));
+			document.head.appendChild(s);
+		});
+	}
+
 	const setupCheckout = () => {
 		const form = document.querySelector('[data-checkout-form]');
 		if (!(form instanceof HTMLFormElement) || form.dataset.checkoutReady === 'true') return;
@@ -80,115 +104,119 @@ const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
 
 		interface TicketData { name: string; priceLabel: string; priceRaw: number }
 		const ticketData: TicketData[] = JSON.parse(form.dataset.tickets ?? '[]');
+		const backendUrl = (form.dataset.backendUrl ?? '').replace(/\/$/, '');
+		const snapUrl = form.dataset.snapUrl ?? '';
+		const snapClientKey = form.dataset.snapClientKey ?? '';
 
 		let currentTicketIndex = 0;
 		let currentQty = 1;
+		let appliedDiscountPerTicket = 0;
+		let appliedVoucherCode = '';
 
-		const formatPrice = (raw: number): string => {
-			if (!raw) return 'Harga menyusul';
-			return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(raw);
-		};
+		const fmt = (n: number) =>
+			new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
 		const updatePriceDisplay = () => {
 			const ticket = ticketData[currentTicketIndex];
 			if (!ticket) return;
-
 			const perTicket = ticket.priceRaw;
-			const total = perTicket * currentQty;
-
-			const subtotalLabel = perTicket ? formatPrice(perTicket) : ticket.priceLabel;
-			const totalLabel = perTicket ? formatPrice(total) : ticket.priceLabel;
-
+			const total = Math.max(0, perTicket * currentQty - appliedDiscountPerTicket * currentQty);
+			const totalLabel = perTicket ? fmt(total) : ticket.priceLabel;
 			if (stickyTotal instanceof HTMLElement) stickyTotal.textContent = totalLabel;
-			if (priceSubtotal instanceof HTMLElement) priceSubtotal.textContent = subtotalLabel;
+			if (priceSubtotal instanceof HTMLElement) priceSubtotal.textContent = perTicket ? fmt(perTicket) : ticket.priceLabel;
 			if (priceTotal instanceof HTMLElement) priceTotal.textContent = totalLabel;
 			if (priceQtyBadge instanceof HTMLElement) priceQtyBadge.textContent = `×${currentQty}`;
 		};
 
-		// Ticket radio change
 		ticketRadios.forEach((radio) => {
 			if (!(radio instanceof HTMLInputElement)) return;
 			radio.addEventListener('change', () => {
-				if (selectedTicketInput instanceof HTMLInputElement) {
-					selectedTicketInput.value = radio.value;
-				}
+				if (selectedTicketInput instanceof HTMLInputElement) selectedTicketInput.value = radio.value;
 				currentTicketIndex = Number(radio.value);
 				updatePriceDisplay();
 			});
 		});
 
-		// Quantity change from CheckoutTicketSelector
 		document.addEventListener('checkout:qty-change', (e) => {
 			currentQty = (e as CustomEvent<{ qty: number }>).detail.qty;
 			updatePriceDisplay();
 		});
 
-		// Init
+		document.addEventListener('checkout:voucher-applied', (e) => {
+			const d = (e as CustomEvent<{ discount_per_ticket: number; code: string }>).detail;
+			appliedDiscountPerTicket = d.discount_per_ticket;
+			appliedVoucherCode = d.code;
+			updatePriceDisplay();
+		});
+
 		const checkedRadio = form.querySelector('[data-ticket-radio]:checked');
-		if (checkedRadio instanceof HTMLInputElement) {
-			currentTicketIndex = Number(checkedRadio.value);
-		}
+		if (checkedRadio instanceof HTMLInputElement) currentTicketIndex = Number(checkedRadio.value);
 		updatePriceDisplay();
 
-		// Form submit handler
-		form.addEventListener('submit', (e) => {
+		form.addEventListener('submit', async (e) => {
 			e.preventDefault();
-
 			const submitBtn = document.querySelector('[data-checkout-submit]');
+			const resetBtn = () => {
+				if (submitBtn instanceof HTMLButtonElement) {
+					submitBtn.disabled = false;
+					submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]" data-icon="payment">payment</span> Lanjut Bayar';
+				}
+			};
 			if (submitBtn instanceof HTMLButtonElement) {
 				submitBtn.disabled = true;
-				submitBtn.innerHTML =
-					'<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Memproses…';
+				submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Memproses…';
 			}
 
-			// Collect form data for the payment page
-			const ticket = ticketData[currentTicketIndex];
-			const totalPrice = ticket?.priceRaw
-				? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
-						ticket.priceRaw * currentQty,
-					)
-				: (ticket?.priceLabel ?? 'Harga menyusul');
+			// Collect attendees
+			const pengunjung: Array<{ name: string; email: string; telepon: string }> = [];
+			let idx = 0;
+			while (idx < 3) {
+				const nameEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][name]"]`);
+				const emailEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][email]"]`);
+				const telEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][phone]"]`);
+				if (!nameEl?.value) break;
+				pengunjung.push({ name: nameEl.value, email: emailEl?.value ?? '', telepon: telEl?.value ?? '' });
+				idx++;
+			}
 
-			// Build payment page URL with order context
-			const eventSlug = (form.querySelector('[name="event_slug"]') as HTMLInputElement | null)?.value ?? '';
-			const paymentMethod = (form.querySelector('[name="payment_method"]') as HTMLInputElement | null)?.value ?? '';
-			const paymentParams = new URLSearchParams({
-				order_id: `ORD-${Date.now()}`,
-				event: document.title.replace(' | Zillenial Action', '').replace('Checkout – ', ''),
-				event_slug: eventSlug,
-				ticket: ticket?.name ?? '',
-				qty: String(currentQty),
-				total: totalPrice,
-				payment_method: paymentMethod,
-			});
+			const paymentMethodId = parseInt(
+				form.querySelector<HTMLInputElement>('[name="payment_method_id"]')?.value ?? '0', 10
+			);
 
-			if (form.action === '#' || form.action.endsWith('#')) {
-				// No backend: go directly to payment UI (demo mode)
-				setTimeout(() => {
-					window.location.href = `/payment?${paymentParams.toString()}`;
-				}, 600);
-			} else {
-				// Backend configured: POST form data, backend returns redirect
-				fetch(form.action, {
+			if (!paymentMethodId) { alert('Pilih metode pembayaran terlebih dahulu.'); resetBtn(); return; }
+			if (pengunjung.length === 0) { alert('Lengkapi data peserta.'); resetBtn(); return; }
+
+			const body = {
+				event_slug: form.dataset.eventSlug ?? '',
+				jumlah_tiket: currentQty,
+				payment_method_id: paymentMethodId,
+				...(appliedVoucherCode ? { voucher_code: appliedVoucherCode } : {}),
+				pengunjung,
+			};
+
+			try {
+				const res = await fetch(`${backendUrl}/api/checkout`, {
 					method: 'POST',
-					body: new FormData(form),
-				})
-					.then((res) => res.json())
-					.then((data: { order_id?: string; redirect_url?: string }) => {
-						if (data.redirect_url) {
-							window.location.href = data.redirect_url;
-						} else if (data.order_id) {
-							paymentParams.set('order_id', data.order_id);
-							window.location.href = `/payment?${paymentParams.toString()}`;
-						}
-					})
-					.catch(() => {
-						if (submitBtn instanceof HTMLButtonElement) {
-							submitBtn.disabled = false;
-							submitBtn.innerHTML =
-								'<span class="material-symbols-outlined text-[18px]" data-icon="payment">payment</span> Lanjut Bayar';
-						}
-					});
+					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+					body: JSON.stringify(body),
+				});
+				const data = await res.json() as { success?: boolean; order_id?: string; snap_token?: string; message?: string };
+
+				if (!res.ok || !data.success) { alert(data.message ?? 'Checkout gagal. Coba lagi.'); resetBtn(); return; }
+
+				const { order_id, snap_token } = data;
+				if (!snap_token) { alert('Gagal mendapatkan token pembayaran.'); resetBtn(); return; }
+
+				await loadSnap(snapUrl, snapClientKey);
+				window.snap.pay(snap_token, {
+					onSuccess:  () => { window.location.href = `/payment/success?order_id=${order_id}`; },
+					onPending:  () => { window.location.href = `/payment/pending?order_id=${order_id}`; },
+					onError:    () => { window.location.href = `/payment/failed?order_id=${order_id}`; },
+					onClose:    () => { resetBtn(); },
+				});
+			} catch {
+				alert('Terjadi kesalahan jaringan. Coba lagi.');
+				resetBtn();
 			}
 		});
 	};

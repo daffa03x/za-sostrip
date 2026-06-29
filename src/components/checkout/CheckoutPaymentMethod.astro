@@ -1,149 +1,40 @@
 ---
-// Payment method selection for checkout form
-// Selected value is written to a hidden input and carried to the payment page
+import type { PaymentMethod } from '../../lib/api';
+
+interface Props {
+	paymentMethods: PaymentMethod[];
+}
+const { paymentMethods } = Astro.props;
 ---
 
-<section data-reveal>
-	<h2 class="mb-md font-headline-md text-headline-md text-on-background">Metode pembayaran</h2>
-	<input type="hidden" name="payment_method" id="selected-payment-method" value="" />
+<div class="rounded-2xl bg-surface-container-low p-md" data-reveal-scope>
+	<h2 class="mb-sm font-title-md text-title-md text-on-surface" data-reveal>Metode Pembayaran</h2>
 
-	<div class="space-y-sm">
-
-		<!-- VA Group -->
-		<div class="overflow-hidden rounded-2xl border border-outline-variant/40 bg-white shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
-			<button
-				class="flex w-full items-center justify-between px-md py-sm text-left"
-				type="button"
-				id="co-va-toggle"
-				aria-expanded="true"
-			>
-				<div class="flex items-center gap-sm">
-					<span class="material-symbols-outlined text-[20px] text-primary">account_balance</span>
-					<span class="text-sm font-black text-on-surface">Transfer Bank (Virtual Account)</span>
-				</div>
-				<span class="material-symbols-outlined text-[20px] text-on-surface-variant transition-transform" id="co-va-chevron">expand_more</span>
-			</button>
-			<div id="co-va-panel" class="px-md pb-md">
-				<div class="grid grid-cols-2 gap-sm">
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="va_bca" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">BCA</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="va_bni" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">BNI</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="va_bri" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">BRI</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="va_mandiri" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">Mandiri</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="va_permata" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">Permata</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="va_cimb" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">CIMB Niaga</span>
-					</label>
-				</div>
-			</div>
+	{paymentMethods.length === 0 ? (
+		<p class="text-sm text-on-surface-variant">Tidak ada metode pembayaran yang tersedia.</p>
+	) : (
+		<div class="space-y-sm" data-reveal-stagger>
+			{paymentMethods.map((pm, i) => (
+				<label class="flex cursor-pointer items-center gap-sm rounded-xl border border-outline-variant bg-surface p-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-container/30">
+					<input
+						type="radio"
+						name="payment_method_id"
+						value={pm.id}
+						class="h-4 w-4 accent-primary"
+						required={i === 0}
+						checked={i === 0}
+					/>
+					{pm.image && (
+						<img
+							src={pm.image}
+							alt={pm.name}
+							class="h-6 w-auto max-w-[72px] object-contain"
+							loading="lazy"
+						/>
+					)}
+					<span class="flex-1 text-sm font-bold text-on-surface">{pm.name}</span>
+				</label>
+			))}
 		</div>
-
-		<!-- E-Wallet Group -->
-		<div class="overflow-hidden rounded-2xl border border-outline-variant/40 bg-white shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
-			<button
-				class="flex w-full items-center justify-between px-md py-sm text-left"
-				type="button"
-				id="co-ew-toggle"
-				aria-expanded="false"
-			>
-				<div class="flex items-center gap-sm">
-					<span class="material-symbols-outlined text-[20px] text-primary">wallet</span>
-					<span class="text-sm font-black text-on-surface">E-Wallet</span>
-				</div>
-				<span class="material-symbols-outlined text-[20px] text-on-surface-variant transition-transform" id="co-ew-chevron">expand_more</span>
-			</button>
-			<div id="co-ew-panel" class="hidden px-md pb-md">
-				<div class="grid grid-cols-2 gap-sm">
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="ewallet_gopay" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">GoPay</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="ewallet_ovo" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">OVO</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="ewallet_dana" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">DANA</span>
-					</label>
-					<label class="group flex cursor-pointer items-center gap-xs rounded-xl border border-outline-variant/40 bg-surface-container-low p-sm transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-						<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="ewallet_shopeepay" data-payment-choice />
-						<span class="text-sm font-bold text-on-surface">ShopeePay</span>
-					</label>
-				</div>
-			</div>
-		</div>
-
-		<!-- QRIS -->
-		<label class="flex cursor-pointer items-center gap-sm rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)] transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-			<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="qris" data-payment-choice />
-			<span class="material-symbols-outlined text-[20px] text-primary">qr_code_2</span>
-			<div>
-				<p class="text-sm font-black text-on-surface">QRIS</p>
-				<p class="text-body-sm text-on-surface-variant">Scan QR dari semua aplikasi dompet</p>
-			</div>
-		</label>
-
-		<!-- Kartu Kredit/Debit -->
-		<label class="flex cursor-pointer items-center gap-sm rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)] transition-all has-[:checked]:border-primary has-[:checked]:bg-primary-container/10">
-			<input class="h-4 w-4 shrink-0 accent-[#7d297f]" type="radio" name="payment_choice" value="credit_card" data-payment-choice />
-			<span class="material-symbols-outlined text-[20px] text-primary">credit_card</span>
-			<div>
-				<p class="text-sm font-black text-on-surface">Kartu Kredit / Debit</p>
-				<p class="text-body-sm text-on-surface-variant">Visa, Mastercard, JCB</p>
-			</div>
-		</label>
-
-	</div>
-
-	<!-- Security note -->
-	<div class="mt-sm flex gap-sm rounded-xl border border-outline-variant/30 bg-surface-container-low p-sm">
-		<span class="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-primary">shield</span>
-		<p class="text-body-sm text-on-surface-variant">
-			Pembayaran diproses aman oleh <strong>Midtrans</strong>. Data kamu tidak disimpan di server kami.
-		</p>
-	</div>
-</section>
-
-<script>
-	// Accordion
-	function coAccordion(toggleId: string, panelId: string, chevronId: string, open: boolean) {
-		const toggle = document.getElementById(toggleId);
-		const panel = document.getElementById(panelId);
-		const chevron = document.getElementById(chevronId);
-		if (!toggle || !panel) return;
-		if (!open) panel.classList.add('hidden');
-		else if (chevron) chevron.style.transform = 'rotate(180deg)';
-		toggle.addEventListener('click', () => {
-			const isOpen = !panel.classList.contains('hidden');
-			panel.classList.toggle('hidden', isOpen);
-			if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
-		});
-	}
-	coAccordion('co-va-toggle', 'co-va-panel', 'co-va-chevron', true);
-	coAccordion('co-ew-toggle', 'co-ew-panel', 'co-ew-chevron', false);
-
-	// Sync chosen radio to hidden input (so form submit and JS can read it)
-	const hiddenInput = document.getElementById('selected-payment-method') as HTMLInputElement | null;
-	document.querySelectorAll('[data-payment-choice]').forEach((r) => {
-		r.addEventListener('change', () => {
-			const checked = document.querySelector('[data-payment-choice]:checked') as HTMLInputElement | null;
-			if (hiddenInput && checked) hiddenInput.value = checked.value;
-		});
-	});
-</script>
+	)}
+</div>

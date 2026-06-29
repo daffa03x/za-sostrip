@@ -6,16 +6,19 @@ import EventLocationNote from '../../components/event-detail/EventLocationNote.a
 import EventStickyCTA from '../../components/event-detail/EventStickyCTA.astro';
 import EventSummaryCard from '../../components/event-detail/EventSummaryCard.astro';
 import EventTickets from '../../components/event-detail/EventTickets.astro';
-import { events } from '../../data/events';
+import { api } from '../../lib/api';
+import { mapToEventDetail } from '../../lib/mappers';
 import Layout from '../../layouts/Layout.astro';
 
-export const getStaticPaths = () =>
-	events.map((event) => ({
-		params: { slug: event.slug },
-		props: { event },
-	}));
+const { slug } = Astro.params;
 
-const { event } = Astro.props;
+let event;
+try {
+	const res = await api.events.show(slug!);
+	event = mapToEventDetail(res.data);
+} catch {
+	return Astro.redirect('/events');
+}
 ---
 
 <Layout title={`${event.title} - Zillenial Action`}>

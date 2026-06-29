@@ -1,14 +1,21 @@
 ---
 import EventListCard from '../event/EventListCard.astro';
-import { events } from '../../data/events';
+import { api } from '../../lib/api';
+import { mapListItemToEventDetail } from '../../lib/mappers';
 
-const previewEvents = events.slice(0, 5);
+let previewEvents: ReturnType<typeof mapListItemToEventDetail>[] = [];
+try {
+	const res = await api.events.list({ per_page: 5 });
+	previewEvents = res.data.map(mapListItemToEventDetail);
+} catch {
+	// Tampilkan kosong jika API tidak tersedia
+}
 ---
 
 <section class="animate-reveal delay-100" aria-labelledby="event-list-title" data-reveal-scope>
 	<div class="mb-md flex items-end justify-between gap-sm">
-		<h2 id="event-list-title" class="font-headline-md text-headline-md text-on-background">Event Terbaru</h2>
-		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">{previewEvents.length} event</span>
+		<h2 id="event-list-title" class="font-headline-md text-headline-md text-on-background">Sosial Trip</h2>
+		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">{previewEvents.length} sosial trip</span>
 	</div>
 	<div class="space-y-sm" data-reveal-stagger>
 		{previewEvents.map((event) => <EventListCard event={event} />)}

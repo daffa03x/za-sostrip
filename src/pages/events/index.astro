@@ -1,7 +1,22 @@
 ---
 import EventListCard from '../../components/event/EventListCard.astro';
-import { events } from '../../data/events';
+import { api } from '../../lib/api';
+import { mapListItemToEventDetail } from '../../lib/mappers';
 import Layout from '../../layouts/Layout.astro';
+
+const page = Number(Astro.url.searchParams.get('page') ?? 1);
+const search = Astro.url.searchParams.get('search') ?? undefined;
+
+let events: ReturnType<typeof mapListItemToEventDetail>[] = [];
+let meta = { current_page: 1, last_page: 1, total: 0 };
+
+try {
+	const res = await api.events.list({ page, search, per_page: 12 });
+	events = res.data.map(mapListItemToEventDetail);
+	meta = res.meta;
+} catch {
+	// Tampilkan kosong
+}
 ---
 
 <Layout title="Semua Event - Zillenial Action">
@@ -12,8 +27,43 @@ import Layout from '../../layouts/Layout.astro';
 		</a>
 		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" data-reveal>Semua Event</h1>
 		<p class="mt-xs text-body-sm text-on-surface-variant" data-reveal>Pilih event olahraga komunitas yang ingin kamu ikuti.</p>
+		<form method="get" class="mt-md flex gap-xs">
+			<input
+				type="search"
+				name="search"
+				value={search ?? ''}
+				placeholder="Cari event…"
+				class="flex-1 rounded-xl border border-outline-variant bg-surface-container-low px-sm py-xs text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+			/>
+			<button type="submit" class="rounded-xl bg-primary px-md py-xs text-sm font-black text-white">Cari</button>
+		</form>
 	</header>
+
 	<main class="space-y-sm px-gutter pb-32" data-reveal-stagger>
-		{events.map((event) => <EventListCard event={event} />)}
+		{events.length > 0
+			? events.map((event) => <EventListCard event={event} />)
+			: <p class="py-xl text-center text-on-surface-variant">Belum ada event yang tersedia.</p>
+		}
 	</main>
+
+	{meta.last_page > 1 && (
+		<nav class="flex justify-center gap-sm pb-20 px-gutter">
+			{meta.current_page > 1 && (
+				<a
+					href={`?page=${meta.current_page - 1}${search ? `&search=${encodeURIComponent(search)}` : ''}`}
+					class="rounded-xl border border-outline-variant px-md py-xs text-sm font-black text-primary"
+				>
+					← Sebelumnya
+				</a>
+			)}
+			{meta.current_page < meta.last_page && (
+				<a
+					href={`?page=${meta.current_page + 1}${search ? `&search=${encodeURIComponent(search)}` : ''}`}
+					class="rounded-xl bg-primary px-md py-xs text-sm font-black text-white"
+				>
+					Berikutnya →
+				</a>
+			)}
+		</nav>
+	)}
 </Layout>
