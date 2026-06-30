@@ -83,6 +83,10 @@ import Layout from '../layouts/Layout.astro';
 					<span class="material-symbols-outlined text-[18px]">open_in_new</span>
 					Buka Aplikasi
 				</button>
+				<div id="ew-qr-section" class="hidden rounded-2xl border border-outline-variant/40 bg-white p-md text-center shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+					<p class="mb-sm text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Atau scan QR (di desktop)</p>
+					<img id="ew-qr-img" class="mx-auto h-40 w-40 rounded-xl object-contain" alt="QR e-wallet" />
+				</div>
 				<div id="ew-how-to" class="space-y-sm"></div>
 			</div>
 
@@ -90,11 +94,11 @@ import Layout from '../layouts/Layout.astro';
 			<div id="qris-instruction" class="hidden space-y-md">
 				<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
 					<p class="mb-sm text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Scan QRIS</p>
-					<!-- Placeholder QR -->
-					<div class="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl bg-surface-container-low">
+					<div id="qris-qr-placeholder" class="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl bg-surface-container-low">
 						<span class="material-symbols-outlined text-[80px] text-on-surface-variant/40">qr_code_2</span>
 					</div>
-					<p class="mt-sm text-center text-body-sm text-on-surface-variant">QR akan muncul setelah backend dikonfigurasi</p>
+					<img id="qris-qr-img" class="mx-auto hidden h-48 w-48 rounded-2xl object-contain" alt="QRIS" />
+					<p class="mt-sm text-center text-body-sm text-on-surface-variant" id="qris-qr-caption">Memuat QR…</p>
 					<div class="mt-sm flex items-center justify-between border-t border-outline-variant/20 pt-sm">
 						<span class="text-sm text-on-surface-variant">Total pembayaran</span>
 						<span class="text-base font-black text-primary" id="qris-total">—</span>
@@ -211,78 +215,43 @@ import Layout from '../layouts/Layout.astro';
 				Klik setelah menyelesaikan transfer. Pembayaran diverifikasi otomatis.
 			</p>
 		</section>
-
-		<!-- Info notice -->
-		<div class="flex gap-sm rounded-xl border border-warning/30 bg-warning-container/20 p-sm">
-			<span class="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-warning">info</span>
-			<p class="text-body-sm text-on-surface-variant">
-				Nomor VA dan QR di atas adalah contoh tampilan. Data nyata akan muncul setelah integrasi Midtrans aktif.
-			</p>
-		</div>
 	</div>
 </Layout>
 
 <script>
 	// @ts-nocheck
+	import { api } from '../lib/api';
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
 	function el(id) { return document.getElementById(id); }
 	function setTxt(id, val) { var e = el(id); if (e) e.textContent = val; }
+	var fmt = function (n) {
+		return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+	};
 
 	// ── URL params ────────────────────────────────────────────────────────────
 	var p = new URLSearchParams(window.location.search);
 	var orderId = p.get('order_id') || '';
-	var total   = p.get('total') || 'Harga menyusul';
-	var method  = p.get('payment_method') || '';
 
-	// ── Populate order summary ────────────────────────────────────────────────
-	setTxt('order-title',  p.get('event')  || 'Nama event');
-	setTxt('order-date',   p.get('date')   || 'Tanggal event');
-	setTxt('order-ticket', p.get('ticket') || 'Tiket');
-	setTxt('order-qty',   (p.get('qty') || '1') + ' tiket');
-	setTxt('order-id',     orderId || 'PENDING');
-	setTxt('order-total',  total);
+	if (!orderId) {
+		window.location.replace('/events');
+	}
 
-	var imgEl = el('order-img');
-	var imgVal = p.get('image');
-	if (imgEl && imgVal) { imgEl.src = decodeURIComponent(imgVal); imgEl.alt = p.get('event') || ''; }
-
-	var backLink = el('back-link');
-	var slug = p.get('event_slug');
-	if (backLink && slug) backLink.href = '/checkout/' + slug;
-
-	el('order-skeleton').classList.add('hidden');
-	el('order-real').classList.remove('hidden');
+	setTxt('order-id', orderId || 'PENDING');
 
 	// ── Method label map ──────────────────────────────────────────────────────
-	var METHOD_LABELS = {
-		va_bca:         'BCA Virtual Account',
-		va_bni:         'BNI Virtual Account',
-		va_bri:         'BRI Virtual Account',
-		va_mandiri:     'Mandiri Virtual Account',
-		va_permata:     'Permata Virtual Account',
-		va_cimb:        'CIMB Niaga Virtual Account',
-		ewallet_gopay:  'GoPay',
-		ewallet_ovo:    'OVO',
-		ewallet_dana:   'DANA',
-		ewallet_shopeepay: 'ShopeePay',
-		qris:           'QRIS',
-		credit_card:    'Kartu Kredit / Debit',
-	};
-	setTxt('order-method', METHOD_LABELS[method] || method || '—');
-
-	// ── VA instructions ───────────────────────────────────────────────────────
-	var VA_BANKS = {
-		va_bca:     { name: 'BCA',         number: '1234 5678 9012 3456' },
-		va_bni:     { name: 'BNI',         number: '8888 0123 4567 8901' },
-		va_bri:     { name: 'BRI',         number: '1234 0123 4567 8901 2' },
-		va_mandiri: { name: 'Mandiri',     number: '8901 2345 6789 0123 4' },
-		va_permata: { name: 'Permata',     number: '8012 3456 7890 1234' },
-		va_cimb:    { name: 'CIMB Niaga',  number: '9012 3456 7890' },
+	var BANK_NAMES = { bca: 'BCA', bni: 'BNI', bri: 'BRI', mandiri: 'Mandiri', permata: 'Permata', cimb: 'CIMB Niaga' };
+	var CHANNEL_LABELS = {
+		bank_transfer: function (bank) { return (BANK_NAMES[bank] || (bank || '').toUpperCase()) + ' Virtual Account'; },
+		echannel:      function () { return 'Mandiri Bill Payment'; },
+		gopay:         function () { return 'GoPay'; },
+		shopeepay:     function () { return 'ShopeePay'; },
+		qris:          function () { return 'QRIS'; },
 	};
 
+	// ── VA "cara bayar" content (per bank) ─────────────────────────────────────
 	var VA_HOWTO = {
-		va_bca: [
+		bca: [
 			{
 				label: 'ATM BCA',
 				steps: [
@@ -313,7 +282,7 @@ import Layout from '../layouts/Layout.astro';
 				],
 			},
 		],
-		va_bni: [
+		bni: [
 			{
 				label: 'ATM BNI',
 				steps: [
@@ -335,7 +304,7 @@ import Layout from '../layouts/Layout.astro';
 				],
 			},
 		],
-		va_bri: [
+		bri: [
 			{
 				label: 'ATM BRI',
 				steps: [
@@ -355,7 +324,7 @@ import Layout from '../layouts/Layout.astro';
 				],
 			},
 		],
-		va_mandiri: [
+		mandiri: [
 			{
 				label: 'ATM Mandiri',
 				steps: [
@@ -375,7 +344,7 @@ import Layout from '../layouts/Layout.astro';
 				],
 			},
 		],
-		va_permata: [
+		permata: [
 			{
 				label: 'ATM Permata / ATM Bersama',
 				steps: [
@@ -394,7 +363,7 @@ import Layout from '../layouts/Layout.astro';
 				],
 			},
 		],
-		va_cimb: [
+		cimb: [
 			{
 				label: 'ATM CIMB Niaga',
 				steps: [
@@ -416,7 +385,7 @@ import Layout from '../layouts/Layout.astro';
 	};
 
 	var EW_HOWTO = {
-		ewallet_gopay: [
+		gopay: [
 			{
 				label: 'Cara bayar GoPay',
 				steps: [
@@ -427,27 +396,7 @@ import Layout from '../layouts/Layout.astro';
 				],
 			},
 		],
-		ewallet_ovo: [
-			{
-				label: 'Cara bayar OVO',
-				steps: [
-					'Klik tombol <strong>Buka Aplikasi</strong> atau buka OVO.',
-					'Notifikasi pembayaran akan muncul.',
-					'Konfirmasi dan masukkan PIN OVO.',
-				],
-			},
-		],
-		ewallet_dana: [
-			{
-				label: 'Cara bayar DANA',
-				steps: [
-					'Klik tombol <strong>Buka Aplikasi</strong> atau buka DANA.',
-					'Konfirmasi pembayaran yang masuk.',
-					'Masukkan PIN DANA kamu.',
-				],
-			},
-		],
-		ewallet_shopeepay: [
+		shopeepay: [
 			{
 				label: 'Cara bayar ShopeePay',
 				steps: [
@@ -487,147 +436,204 @@ import Layout from '../layouts/Layout.astro';
 	}
 	window.toggleAcc = toggleAcc;
 
-	// ── Render payment instructions ───────────────────────────────────────────
+	// ── Render payment instructions dari data asli backend ────────────────────
 	var instructionSection = el('payment-instruction-section');
 
-	if (method && method in VA_BANKS) {
-		// VA payment
-		var bank = VA_BANKS[method];
-		setTxt('va-bank-label', bank.name);
-		setTxt('va-number', bank.number);
-		setTxt('va-total', total);
+	function renderInstructions(channel, instructions) {
+		instructions = instructions || {};
 
-		var howToContainer = el('va-how-to');
-		var steps = VA_HOWTO[method] || [];
-		steps.forEach(function (item) {
-			howToContainer.innerHTML += buildAccordion(item.label, item.steps);
-		});
+		if (channel === 'bank_transfer' || channel === 'echannel') {
+			var bankCode = instructions.bank || '';
+			var vaNumber = instructions.va_number || instructions.bill_key || '—';
+			setTxt('va-bank-label', BANK_NAMES[bankCode] || bankCode.toUpperCase() || 'Mandiri');
+			setTxt('va-number', vaNumber);
 
-		// Open first accordion by default
-		if (steps.length > 0) {
-			var firstPanel  = document.getElementById('acc-1');
-			var firstChevron = document.getElementById('acc-1-chevron');
-			if (firstPanel)  firstPanel.classList.remove('hidden');
-			if (firstChevron) firstChevron.style.transform = 'rotate(180deg)';
-		}
-
-		el('va-instruction').classList.remove('hidden');
-		instructionSection.classList.remove('hidden');
-
-		// Copy button
-		var copyBtn = el('copy-va-btn');
-		if (copyBtn) {
-			copyBtn.addEventListener('click', function () {
-				var raw = bank.number.replace(/\s/g, '');
-				if (navigator.clipboard) {
-					navigator.clipboard.writeText(raw).then(function () {
-						copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> Tersalin!';
-						setTimeout(function () {
-							copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">content_copy</span> Salin';
-						}, 2000);
-					});
-				} else {
-					copyBtn.textContent = raw;
-				}
+			var howToContainer = el('va-how-to');
+			var steps = VA_HOWTO[bankCode] || [];
+			steps.forEach(function (item) {
+				howToContainer.innerHTML += buildAccordion(item.label, item.steps);
 			});
-		}
-
-	} else if (method && method.indexOf('ewallet_') === 0) {
-		// E-Wallet payment
-		var ewName = METHOD_LABELS[method] || method;
-		setTxt('ew-name-label', ewName);
-		setTxt('ew-total', total);
-
-		var ewHowTo = el('ew-how-to');
-		var ewSteps = EW_HOWTO[method] || [];
-		ewSteps.forEach(function (item) {
-			ewHowTo.innerHTML += buildAccordion(item.label, item.steps);
-		});
-		if (ewSteps.length > 0) {
-			var ep = document.getElementById('acc-1');
-			var ec = document.getElementById('acc-1-chevron');
-			if (ep) ep.classList.remove('hidden');
-			if (ec) ec.style.transform = 'rotate(180deg)';
-		}
-
-		el('ew-instruction').classList.remove('hidden');
-		instructionSection.classList.remove('hidden');
-
-	} else if (method === 'qris') {
-		setTxt('qris-total', total);
-		el('qris-instruction').classList.remove('hidden');
-		instructionSection.classList.remove('hidden');
-
-	} else if (method === 'credit_card') {
-		setTxt('cc-total', total);
-		el('cc-instruction').classList.remove('hidden');
-		instructionSection.classList.remove('hidden');
-	}
-
-	// ── Countdown ─────────────────────────────────────────────────────────────
-	var timerKey = 'payment_deadline_' + (orderId || 'demo');
-	var deadline = Number(sessionStorage.getItem(timerKey));
-	if (!deadline || deadline < Date.now()) {
-		deadline = Date.now() + 24 * 60 * 60 * 1000;
-		sessionStorage.setItem(timerKey, String(deadline));
-	}
-	var cdEl    = el('countdown-display');
-	var timerEl = el('payment-timer-section');
-	var countdownIv = null;
-
-	function tick() {
-		var rem = deadline - Date.now();
-		if (rem <= 0) {
-			if (cdEl) cdEl.textContent = '00:00:00';
-			if (timerEl) {
-				timerEl.className = timerEl.className
-					.replace('border-warning/30', 'border-error/30')
-					.replace('bg-warning-container/30', 'bg-error-container/20');
+			if (steps.length > 0) {
+				var firstPanel  = document.getElementById('acc-1');
+				var firstChevron = document.getElementById('acc-1-chevron');
+				if (firstPanel)  firstPanel.classList.remove('hidden');
+				if (firstChevron) firstChevron.style.transform = 'rotate(180deg)';
 			}
-			clearInterval(countdownIv);
-			return;
-		}
-		var h = Math.floor(rem / 3600000).toString().padStart(2, '0');
-		var m = Math.floor((rem % 3600000) / 60000).toString().padStart(2, '0');
-		var s = Math.floor((rem % 60000) / 1000).toString().padStart(2, '0');
-		if (cdEl) cdEl.textContent = h + ':' + m + ':' + s;
-	}
-	tick();
-	countdownIv = setInterval(tick, 1000);
 
-	// ── Confirm / "sudah bayar" button ────────────────────────────────────────
+			el('va-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+
+			var copyBtn = el('copy-va-btn');
+			if (copyBtn) {
+				copyBtn.addEventListener('click', function () {
+					var raw = vaNumber.replace(/\s/g, '');
+					if (navigator.clipboard) {
+						navigator.clipboard.writeText(raw).then(function () {
+							copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> Tersalin!';
+							setTimeout(function () {
+								copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">content_copy</span> Salin';
+							}, 2000);
+						});
+					} else {
+						copyBtn.textContent = raw;
+					}
+				});
+			}
+
+		} else if (channel === 'gopay' || channel === 'shopeepay') {
+			setTxt('ew-name-label', CHANNEL_LABELS[channel]());
+
+			if (instructions.deeplink_url) {
+				var ewBtn = el('ew-open-btn');
+				if (ewBtn) {
+					ewBtn.addEventListener('click', function () {
+						window.location.href = instructions.deeplink_url;
+					});
+				}
+			}
+			if (instructions.qr_url) {
+				var ewQrImg = el('ew-qr-img');
+				var ewQrSection = el('ew-qr-section');
+				if (ewQrImg) ewQrImg.src = instructions.qr_url;
+				if (ewQrSection) ewQrSection.classList.remove('hidden');
+			}
+
+			var ewHowTo = el('ew-how-to');
+			var ewSteps = EW_HOWTO[channel] || [];
+			ewSteps.forEach(function (item) {
+				ewHowTo.innerHTML += buildAccordion(item.label, item.steps);
+			});
+			if (ewSteps.length > 0) {
+				var ep = document.getElementById('acc-1');
+				var ec = document.getElementById('acc-1-chevron');
+				if (ep) ep.classList.remove('hidden');
+				if (ec) ec.style.transform = 'rotate(180deg)';
+			}
+
+			el('ew-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+
+		} else if (channel === 'qris') {
+			if (instructions.qr_url) {
+				var qrImg = el('qris-qr-img');
+				var qrPlaceholder = el('qris-qr-placeholder');
+				if (qrImg) { qrImg.src = instructions.qr_url; qrImg.classList.remove('hidden'); }
+				if (qrPlaceholder) qrPlaceholder.classList.add('hidden');
+				setTxt('qris-qr-caption', 'Scan dengan aplikasi e-wallet atau mobile banking kamu.');
+			}
+			el('qris-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+
+		} else {
+			// Kartu kredit / channel tanpa instruksi custom — seharusnya tidak sampai di sini
+			// karena checkout sudah redirect ke Snap popup untuk channel ini.
+			el('cc-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+		}
+	}
+
+	// ── Countdown berbasis expiry_time dari Midtrans (fallback 24 jam) ────────
+	function startCountdown(expiryTime) {
+		var deadline = expiryTime ? new Date(expiryTime.replace(' ', 'T')).getTime() : NaN;
+		if (!deadline || isNaN(deadline)) deadline = Date.now() + 24 * 60 * 60 * 1000;
+
+		var cdEl    = el('countdown-display');
+		var timerEl = el('payment-timer-section');
+		var countdownIv = null;
+
+		function tick() {
+			var rem = deadline - Date.now();
+			if (rem <= 0) {
+				if (cdEl) cdEl.textContent = '00:00:00';
+				if (timerEl) {
+					timerEl.className = timerEl.className
+						.replace('border-warning/30', 'border-error/30')
+						.replace('bg-warning-container/30', 'bg-error-container/20');
+				}
+				clearInterval(countdownIv);
+				return;
+			}
+			var h = Math.floor(rem / 3600000).toString().padStart(2, '0');
+			var m = Math.floor((rem % 3600000) / 60000).toString().padStart(2, '0');
+			var s = Math.floor((rem % 60000) / 1000).toString().padStart(2, '0');
+			if (cdEl) cdEl.textContent = h + ':' + m + ':' + s;
+		}
+		tick();
+		countdownIv = setInterval(tick, 1000);
+	}
+
+	// ── Status polling — backend diupdate oleh webhook Midtrans ───────────────
+	var pollIv = null;
+	function startStatusPolling() {
+		pollIv = setInterval(function () {
+			api.transaksi.status(orderId).then(function (res) {
+				var status = res.data.status_pembayaran;
+				if (status === 'Success') {
+					clearInterval(pollIv);
+					window.location.href = '/payment/success?order_id=' + orderId;
+				} else if (status === 'Failed') {
+					clearInterval(pollIv);
+					window.location.href = '/payment/failed?order_id=' + orderId;
+				}
+			}).catch(function () { /* abaikan, coba lagi di polling berikutnya */ });
+		}, 5000);
+	}
+
+	// ── Confirm / "sudah bayar" button — nudge manual, konfirmasi nyata dari polling ──
 	var confirmBtn = el('confirm-btn');
 	if (confirmBtn) {
 		confirmBtn.addEventListener('click', function () {
 			confirmBtn.disabled = true;
 			confirmBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Memeriksa…';
-			// In production: poll backend for status, then redirect
-			setTimeout(function () {
-				window.location.href = '/payment/pending?order_id=' + (orderId || 'demo');
-			}, 1500);
+			api.transaksi.status(orderId).then(function (res) {
+				var status = res.data.status_pembayaran;
+				if (status === 'Success') { window.location.href = '/payment/success?order_id=' + orderId; return; }
+				if (status === 'Failed') { window.location.href = '/payment/failed?order_id=' + orderId; return; }
+				window.location.href = '/payment/pending?order_id=' + orderId;
+			}).catch(function () {
+				confirmBtn.disabled = false;
+				confirmBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span> Saya Sudah Bayar';
+			});
 		});
 	}
 
-	// ── CC pay button (opens Midtrans Snap) ───────────────────────────────────
-	var ccBtn = el('cc-pay-btn');
-	if (ccBtn) {
-		ccBtn.addEventListener('click', function () {
-			if (typeof window.snap === 'undefined') {
-				ccBtn.textContent = 'Midtrans belum dikonfigurasi';
-				return;
-			}
-			// Backend provides snap_token; wire up here when ready
+	// ── Load data transaksi asli dari backend ──────────────────────────────────
+	function load() {
+		api.transaksi.status(orderId).then(function (res) {
+			var data = res.data;
+
+			setTxt('order-title',  data.event.name);
+			setTxt('order-date',   data.event.waktu_mulai);
+			setTxt('order-ticket', data.event.name);
+			setTxt('order-qty',    data.jumlah_tiket + ' tiket');
+			setTxt('order-total',  fmt(data.total_pembayaran));
+			setTxt('va-total', fmt(data.total_pembayaran));
+			setTxt('ew-total', fmt(data.total_pembayaran));
+			setTxt('qris-total', fmt(data.total_pembayaran));
+			setTxt('cc-total', fmt(data.total_pembayaran));
+
+			var channelLabelFn = CHANNEL_LABELS[data.payment_channel];
+			setTxt('order-method', channelLabelFn ? channelLabelFn((data.payment_instructions || {}).bank) : 'Kartu Kredit / Debit');
+
+			var imgEl = el('order-img');
+			if (imgEl && data.event.image) { imgEl.src = data.event.image; imgEl.alt = data.event.name; }
+
+			var backLink = el('back-link');
+			if (backLink && data.event.slug) backLink.href = '/checkout/' + data.event.slug;
+
+			el('order-skeleton').classList.add('hidden');
+			el('order-real').classList.remove('hidden');
+
+			if (data.status_pembayaran === 'Success') { window.location.href = '/payment/success?order_id=' + orderId; return; }
+			if (data.status_pembayaran === 'Failed') { window.location.href = '/payment/failed?order_id=' + orderId; return; }
+
+			renderInstructions(data.payment_channel, data.payment_instructions);
+			startCountdown((data.payment_instructions || {}).expiry_time);
+			startStatusPolling();
+		}).catch(function () {
+			window.location.replace('/events');
 		});
 	}
 
-	// ── E-Wallet open app button ──────────────────────────────────────────────
-	var ewBtn = el('ew-open-btn');
-	if (ewBtn) {
-		ewBtn.addEventListener('click', function () {
-			ewBtn.textContent = 'Membuka aplikasi…';
-			setTimeout(function () {
-				ewBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">open_in_new</span> Buka Aplikasi';
-			}, 2000);
-		});
-	}
+	if (orderId) load();
 </script>

@@ -51,10 +51,24 @@ export interface CheckoutBody {
 	pengunjung: Array<{ name: string; email: string; telepon: string }>;
 }
 
+export interface PaymentInstructions {
+	bank?: string;
+	va_number?: string;
+	bill_key?: string;
+	biller_code?: string;
+	qr_url?: string;
+	deeplink_url?: string;
+	expiry_time?: string;
+}
+
+export type PaymentChannel = 'bank_transfer' | 'echannel' | 'gopay' | 'shopeepay' | 'qris';
+
 export interface CheckoutResponse {
 	success: boolean;
 	order_id: string;
 	snap_token: string;
+	payment_channel?: PaymentChannel | null;
+	payment_instructions?: PaymentInstructions | null;
 	message?: string;
 }
 
@@ -64,6 +78,8 @@ export interface TransaksiStatus {
 	total_pembayaran: number;
 	jumlah_tiket: number;
 	snap_token: string | null;
+	payment_channel?: PaymentChannel | null;
+	payment_instructions?: PaymentInstructions | null;
 	event: {
 		name: string;
 		slug: string;

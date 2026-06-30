@@ -195,11 +195,19 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 					body: JSON.stringify(body),
 				});
-				const data = await res.json() as { success?: boolean; order_id?: string; snap_token?: string; message?: string };
+				const data = await res.json() as { success?: boolean; order_id?: string; snap_token?: string; payment_channel?: string | null; message?: string };
 
 				if (!res.ok || !data.success) { alert(data.message ?? 'Checkout gagal. Coba lagi.'); resetBtn(); return; }
 
-				const { order_id, snap_token } = data;
+				const { order_id, snap_token, payment_channel } = data;
+
+				// Channel custom (VA/QRIS/e-wallet) → tampilan instruksi bayar sendiri, bukan modal Midtrans.
+				if (payment_channel) {
+					window.location.href = `/payment?order_id=${order_id}`;
+					return;
+				}
+
+				// Fallback: kartu kredit / channel tanpa instruksi custom → tetap pakai Snap popup.
 				if (!snap_token) { alert('Gagal mendapatkan token pembayaran.'); resetBtn(); return; }
 
 				await loadSnap(snapUrl, snapClientKey);
