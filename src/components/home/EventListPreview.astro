@@ -5,11 +5,11 @@ import LoadingState from '../ui/LoadingState.astro';
 
 <section class="animate-reveal delay-100" aria-labelledby="event-list-title" data-reveal-scope>
 	<div class="mb-md flex items-end justify-between gap-sm">
-		<h2 id="event-list-title" class="font-headline-md text-headline-md text-on-background">Sosial Trip</h2>
-		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary" data-preview-count>0 sosial trip</span>
+		<h2 id="event-list-title" class="font-headline-md text-headline-md text-on-background">Social Trip</h2>
+		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary" data-preview-count>0 Social Trip</span>
 	</div>
 	<div class="space-y-sm" data-reveal-stagger data-preview-list>
-		<LoadingState label="Memuat sosial trip..." size="sm" class="py-md" />
+		<LoadingState label="Memuat Social Trip..." size="sm" class="py-md" />
 	</div>
 
 	<template data-preview-tpl>
@@ -41,7 +41,7 @@ import LoadingState from '../ui/LoadingState.astro';
 		try {
 			const res = await api.events.list({ per_page: previewLimit });
 			const events = res.data.slice(0, previewLimit).map(mapListItemToEventDetail);
-			if (count instanceof HTMLElement) count.textContent = `${events.length} sosial trip`;
+			if (count instanceof HTMLElement) count.textContent = `${events.length} Social Trip`;
 
 			if (events.length === 0) {
 				list.innerHTML = '<p class="py-md text-center text-sm text-on-surface-variant">Belum ada event yang tersedia.</p>';
@@ -62,7 +62,7 @@ import LoadingState from '../ui/LoadingState.astro';
 				})),
 			);
 		} catch {
-			if (count instanceof HTMLElement) count.textContent = '0 sosial trip';
+			if (count instanceof HTMLElement) count.textContent = '0 Social Trip';
 			list.innerHTML = '<p class="py-md text-center text-sm text-on-surface-variant">Belum ada event yang tersedia.</p>';
 		}
 	};

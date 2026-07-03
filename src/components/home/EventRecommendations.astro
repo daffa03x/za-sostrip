@@ -5,7 +5,7 @@ import LoadingState from '../ui/LoadingState.astro';
 
 <section class="relative z-20 -mt-[165px]" data-event-carousel data-reveal-scope>
 	<div class="flex justify-between items-center mb-md animate-reveal delay-200">
-		<h2 class="font-headline-md text-headline-md text-white">Rekomendasi Sosial Trip</h2>
+		<h2 class="font-headline-md text-headline-md text-white">Rekomendasi Social Trip</h2>
 		<div class="flex gap-sm">
 			<button
 				class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:bg-primary-container hover:text-on-primary transition-colors active:scale-90 disabled:opacity-40 disabled:pointer-events-none"
@@ -34,7 +34,7 @@ import LoadingState from '../ui/LoadingState.astro';
 		aria-label="Daftar rekomendasi event"
 		data-rec-list
 	>
-		<LoadingState label="Memuat sosial trip..." variant="dark" size="sm" class="min-w-full py-lg" />
+		<LoadingState label="Memuat Social Trip..." variant="dark" size="sm" class="min-w-full py-lg" />
 	</div>
 
 	<template data-rec-tpl>
@@ -59,7 +59,7 @@ import LoadingState from '../ui/LoadingState.astro';
 			const events = res.data.slice(0, recommendationLimit).map(mapListItemToEventDetail);
 
 			if (events.length === 0) {
-				list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada sosial trip tersedia.</p>';
+				list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada Social Trip tersedia.</p>';
 				return;
 			}
 
@@ -76,7 +76,7 @@ import LoadingState from '../ui/LoadingState.astro';
 				})),
 			);
 		} catch {
-			list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada sosial trip tersedia.</p>';
+			list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada Social Trip tersedia.</p>';
 		}
 	};
 
