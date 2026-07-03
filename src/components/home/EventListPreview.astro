@@ -30,6 +30,8 @@ import LoadingState from '../ui/LoadingState.astro';
 	import { mapListItemToEventDetail } from '../../lib/mappers';
 	import { renderList } from '../../lib/csr';
 
+	const previewLimit = 5;
+
 	const load = async () => {
 		const list = document.querySelector('[data-preview-list]');
 		const count = document.querySelector('[data-preview-count]');
@@ -37,8 +39,8 @@ import LoadingState from '../ui/LoadingState.astro';
 		list.dataset.previewReady = 'true';
 
 		try {
-			const res = await api.events.list({ per_page: 5 });
-			const events = res.data.map(mapListItemToEventDetail);
+			const res = await api.events.list({ per_page: previewLimit });
+			const events = res.data.slice(0, previewLimit).map(mapListItemToEventDetail);
 			if (count instanceof HTMLElement) count.textContent = `${events.length} sosial trip`;
 
 			if (events.length === 0) {

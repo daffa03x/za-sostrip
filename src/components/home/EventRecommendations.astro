@@ -47,14 +47,16 @@ import LoadingState from '../ui/LoadingState.astro';
 	import { mapListItemToEventDetail } from '../../lib/mappers';
 	import { renderList } from '../../lib/csr';
 
+	const recommendationLimit = 6;
+
 	const load = async () => {
 		const list = document.querySelector('[data-rec-list]');
 		if (!(list instanceof HTMLElement) || list.dataset.recReady === 'true') return;
 		list.dataset.recReady = 'true';
 
 		try {
-			const res = await api.events.list({ per_page: 6 });
-			const events = res.data.map(mapListItemToEventDetail);
+			const res = await api.events.list({ per_page: recommendationLimit });
+			const events = res.data.slice(0, recommendationLimit).map(mapListItemToEventDetail);
 
 			if (events.length === 0) {
 				list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada sosial trip tersedia.</p>';
