@@ -1,11 +1,13 @@
 ---
 // Daftar mitra/sponsor dengan nama file di public/mitra/ dan label tampilan
 const mitraList = [
-  { file: 'raih-mimpi.png',      alt: 'Raih Mimpi'  },
-  { file: 'diferensia.png',      alt: 'Diferensia'  },
-  { file: 'pt-yooka.png',        alt: 'PT Yooka'    },
-  { file: 'kitabisa.png',        alt: 'Kitabisa'    },
+  { file: 'raih-mimpi.png', alt: 'Raih Mimpi' },
+  { file: 'diferensia.png', alt: 'Diferensia' },
+  { file: 'pt-yooka.png', alt: 'PT Yooka' },
+  { file: 'kitabisa.png', alt: 'Kitabisa' },
 ];
+
+const eagerLogoCount = 6;
 
 // Encode nama file agar URL aman meski ada spasi/tanda kurung
 function encodePath(filename: string): string {
@@ -22,16 +24,17 @@ function encodePath(filename: string): string {
     <p class="sponsor-subtitle">Terima kasih kepada seluruh mitra dan sponsor yang mendukung Sostrip / Zillenial Action.</p>
 
     <div class="sponsor-grid" role="list">
-      {mitraList.map((mitra) => (
+      {mitraList.map((mitra, index) => (
         <div class="sponsor-item" role="listitem">
           <img
             src={encodePath(mitra.file)}
             alt={`Logo ${mitra.alt}`}
             width="160"
             height="80"
-            loading="lazy"
+            loading={index < eagerLogoCount ? 'eager' : 'lazy'}
             decoding="async"
             class="sponsor-logo"
+            draggable="false"
           />
         </div>
       ))}
@@ -89,7 +92,8 @@ function encodePath(filename: string): string {
     border: 1px solid #e5e7eb;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     transition: box-shadow 0.2s ease, transform 0.2s ease;
-    min-width: 120px;
+    width: 150px;
+    min-height: 88px;
   }
 
   .sponsor-item:hover {
@@ -118,7 +122,8 @@ function encodePath(filename: string): string {
       gap: 1rem;
     }
     .sponsor-item {
-      min-width: 100px;
+      width: calc((100% - 1rem) / 2);
+      min-height: 76px;
       padding: 0.6rem 0.75rem;
     }
     .sponsor-logo {
