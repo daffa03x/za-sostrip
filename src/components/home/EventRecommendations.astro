@@ -1,5 +1,6 @@
 ---
 import EventCard from './EventCard.astro';
+import LoadingState from '../ui/LoadingState.astro';
 ---
 
 <section class="relative z-20 -mt-[165px]" data-event-carousel data-reveal-scope>
@@ -33,7 +34,7 @@ import EventCard from './EventCard.astro';
 		aria-label="Daftar rekomendasi event"
 		data-rec-list
 	>
-		<p class="text-white/70 text-sm py-lg">Memuat sosial trip…</p>
+		<LoadingState label="Memuat sosial trip..." variant="dark" size="sm" class="min-w-full py-lg" />
 	</div>
 
 	<template data-rec-tpl>

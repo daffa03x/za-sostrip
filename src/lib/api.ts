@@ -19,6 +19,13 @@ export interface EventDetailAPI extends EventListItem {
 	website: string | null;
 	nama_tempat: string | null;
 	alamat: string | null;
+	direction_url: string | null;
+	benefits?: string[];
+	agenda?: Array<{
+		time_label?: string | null;
+		title?: string | null;
+		description?: string | null;
+	}>;
 	jumlah_tiket: number;
 }
 
@@ -27,6 +34,7 @@ export interface PaymentMethod {
 	name: string;
 	image: string | null;
 	type: string;
+	midtrans_payment_type?: PaymentChannel | null;
 }
 
 export interface EventListResponse {

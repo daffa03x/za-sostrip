@@ -30,8 +30,7 @@ const { event } = Astro.props;
 		</button>
 	</header>
 	<div class="absolute inset-x-0 bottom-0 z-10 px-gutter pb-14 animate-reveal delay-100">
-		<h1 class="max-w-[11ch] font-headline-lg-mobile text-headline-lg-mobile text-white" data-bind="title">{event.title}</h1>
-		<div class="mt-sm flex items-center gap-sm">
+		<div class="flex items-center gap-sm">
 			<span class="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md" data-bind="category">{event.category}</span>
 			<span class="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-primary" data-bind="status">{event.status}</span>
 		</div>

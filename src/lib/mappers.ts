@@ -41,6 +41,7 @@ export function mapToEventDetail(api: EventDetailAPI): EventDetail {
 		date: api.waktu_mulai ? formatDate(api.waktu_mulai) : 'Tanggal menyusul',
 		location: [api.kota, api.alamat].filter(Boolean).join(', ') || 'Lokasi menyusul',
 		venue: api.nama_tempat || 'Lokasi menyusul',
+		directionUrl: api.direction_url ?? '',
 		category: api.mitra || 'Event',
 		status,
 		image: api.image ?? '',
@@ -52,7 +53,7 @@ export function mapToEventDetail(api: EventDetailAPI): EventDetail {
 			{ label: 'Lokasi', value: api.kota ?? 'Menyusul' },
 			{ label: 'Status', value: status },
 		],
-		highlights: [],
+		highlights: (api.benefits ?? []).filter(Boolean),
 		tickets: [
 			{
 				name: 'Tiket Event',
@@ -62,7 +63,13 @@ export function mapToEventDetail(api: EventDetailAPI): EventDetail {
 				status,
 			},
 		],
-		agenda: [],
+		agenda: (api.agenda ?? [])
+			.map((item) => ({
+				timeLabel: item.time_label ?? '',
+				title: item.title ?? '',
+				description: item.description ?? '',
+			}))
+			.filter((item) => item.timeLabel || item.title || item.description),
 		notes: api.sisa_tiket <= 0 ? ['Tiket untuk event ini sudah habis.'] : [],
 	};
 }
@@ -75,6 +82,7 @@ export function mapListItemToEventDetail(api: EventListItem): EventDetail {
 		date: api.waktu_mulai ? formatDate(api.waktu_mulai) : 'Tanggal menyusul',
 		location: api.kota ?? 'Lokasi menyusul',
 		venue: '',
+		directionUrl: '',
 		category: api.mitra ?? 'Event',
 		status,
 		image: api.image ?? '',

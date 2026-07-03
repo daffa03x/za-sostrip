@@ -1,21 +1,22 @@
 ---
 import EventListCard from '../../components/event/EventListCard.astro';
+import LoadingState from '../../components/ui/LoadingState.astro';
 import Layout from '../../layouts/Layout.astro';
 ---
 
-<Layout title="Semua Event - Zillenial Action">
+<Layout title="Semua Sosial Trip - Zillenial Action">
 	<header class="px-gutter pb-lg pt-16" data-reveal-scope>
 		<a class="mb-md inline-flex items-center gap-xs text-sm font-bold text-primary" href="/">
 			<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
 			Kembali
 		</a>
-		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" data-reveal>Semua Event</h1>
-		<p class="mt-xs text-body-sm text-on-surface-variant" data-reveal>Pilih event olahraga komunitas yang ingin kamu ikuti.</p>
+		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" data-reveal>Semua Sosial Trip</h1>
+		<p class="mt-xs text-body-sm text-on-surface-variant" data-reveal>Pilih sosial trip yang ingin kamu ikuti.</p>
 		<form method="get" class="mt-md flex gap-xs" data-events-search>
 			<input
 				type="search"
 				name="search"
-				placeholder="Cari event…"
+				placeholder="Cari sosial trip…"
 				class="flex-1 rounded-xl border border-outline-variant bg-surface-container-low px-sm py-xs text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
 				data-search-input
 			/>
@@ -24,7 +25,7 @@ import Layout from '../../layouts/Layout.astro';
 	</header>
 
 	<main class="space-y-sm px-gutter pb-32" data-reveal-stagger data-events-list>
-		<p class="py-xl text-center text-on-surface-variant">Memuat event…</p>
+		<LoadingState label="Memuat sosial trip..." class="py-xl" />
 	</main>
 
 	<template data-events-tpl>
@@ -66,7 +67,7 @@ import Layout from '../../layouts/Layout.astro';
 			const meta = res.meta;
 
 			if (events.length === 0) {
-				main.innerHTML = '<p class="py-xl text-center text-on-surface-variant">Belum ada event yang tersedia.</p>';
+				main.innerHTML = '<p class="py-xl text-center text-on-surface-variant">Belum ada sosia trip yang tersedia.</p>';
 			} else {
 				renderList(
 					'[data-events-list]',
@@ -98,7 +99,7 @@ import Layout from '../../layouts/Layout.astro';
 				next.href = buildHref(meta.current_page + 1, search);
 			}
 		} catch {
-			main.innerHTML = '<p class="py-xl text-center text-on-surface-variant">Belum ada event yang tersedia.</p>';
+			main.innerHTML = '<p class="py-xl text-center text-on-surface-variant">Belum ada sosial trip yang tersedia.</p>';
 		}
 	};
 

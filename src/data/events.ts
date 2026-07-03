@@ -23,6 +23,7 @@ export interface EventDetail {
 	date: string;
 	location: string;
 	venue: string;
+	directionUrl?: string;
 	category: string;
 	status: string;
 	image: string;

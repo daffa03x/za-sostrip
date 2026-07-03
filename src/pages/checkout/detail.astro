@@ -1,12 +1,11 @@
 ---
-import CheckoutOrderSummary from '../../components/checkout/CheckoutOrderSummary.astro';
 import CheckoutTicketSelector from '../../components/checkout/CheckoutTicketSelector.astro';
 import CheckoutPersonalForm from '../../components/checkout/CheckoutPersonalForm.astro';
 import CheckoutVoucherAndSummary from '../../components/checkout/CheckoutVoucherAndSummary.astro';
 import CheckoutPaymentMethod from '../../components/checkout/CheckoutPaymentMethod.astro';
 import CheckoutStickyCTA from '../../components/checkout/CheckoutStickyCTA.astro';
 import Layout from '../../layouts/Layout.astro';
-import type { EventDetail, EventTicket } from '../../data/events';
+import type { EventDetail } from '../../data/events';
 
 // Kerangka placeholder; data asli diisi di browser berdasarkan ?slug.
 const skeleton: EventDetail = {
@@ -14,8 +13,6 @@ const skeleton: EventDetail = {
 	status: '—', image: '', imageAlt: '', summary: '', impactNote: '', stats: [],
 	highlights: [], tickets: [], agenda: [], notes: [],
 };
-const placeholderTicket: EventTicket = { name: '—', priceLabel: '—', priceRaw: 0, description: '', status: '' };
-
 // Env PUBLIC_* di-inline saat build.
 const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
 const snapUrl = import.meta.env.PUBLIC_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
@@ -23,7 +20,7 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 ---
 
 <Layout title="Checkout | Zillenial Action">
-	<header class="px-gutter pb-sm pt-14" data-reveal-scope>
+	<header class="px-gutter pb-xs pt-14" data-reveal-scope>
 		<a
 			class="mb-md inline-flex items-center gap-xs text-sm font-bold text-primary"
 			href="/events"
@@ -39,7 +36,8 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 
 	<form
 		id="checkout-form"
-		class="space-y-lg px-gutter pb-44"
+		class="space-y-md px-gutter pb-28"
+		novalidate
 		data-reveal-scope
 		data-checkout-form
 		data-event-slug=""
@@ -51,11 +49,10 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 	>
 		<input type="hidden" name="ticket_index" value="0" data-selected-ticket-index />
 
-		<CheckoutOrderSummary event={skeleton} selectedTicket={placeholderTicket} />
-		<CheckoutTicketSelector event={skeleton} />
+		<CheckoutTicketSelector />
 		<CheckoutPersonalForm />
-		<CheckoutVoucherAndSummary />
 		<CheckoutPaymentMethod />
+		<CheckoutVoucherAndSummary />
 	</form>
 
 	<CheckoutStickyCTA event={skeleton} />
@@ -63,8 +60,9 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 
 <script>
 	import { api } from '../../lib/api';
+	import type { PaymentMethod } from '../../lib/api';
 	import { mapToEventDetail } from '../../lib/mappers';
-	import { bind, renderList, queryParam } from '../../lib/csr';
+	import { bind, queryParam } from '../../lib/csr';
 
 	declare global {
 		interface Window {
@@ -84,14 +82,113 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		});
 	}
 
+	const PAYMENT_GROUPS = [
+		{ key: 'va', title: 'Virtual Account' },
+		{ key: 'ewallet', title: 'E-Wallet' },
+		{ key: 'qris', title: 'QRIS' },
+		{ key: 'card', title: 'Kartu Kredit / Debit' },
+		{ key: 'other', title: 'Metode Lain' },
+	] as const;
+
+	type PaymentGroupKey = typeof PAYMENT_GROUPS[number]['key'];
+
+	const groupPaymentMethod = (method: PaymentMethod): PaymentGroupKey => {
+		const channel = method.midtrans_payment_type ?? '';
+		const text = `${method.name} ${method.type} ${channel}`.toLowerCase();
+
+		if (
+			channel === 'bank_transfer' ||
+			channel === 'echannel' ||
+			text.includes('virtual account') ||
+			text.includes('bill payment')
+		) return 'va';
+
+		if (
+			channel === 'gopay' ||
+			channel === 'shopeepay' ||
+			text.includes('gopay') ||
+			text.includes('shopee') ||
+			text.includes('wallet') ||
+			text.includes('e-wallet')
+		) return 'ewallet';
+
+		if (channel === 'qris' || text.includes('qris')) return 'qris';
+
+		if (
+			text.includes('credit') ||
+			text.includes('debit') ||
+			text.includes('kartu') ||
+			text.includes('card')
+		) return 'card';
+
+		return 'other';
+	};
+
+	const renderPaymentMethods = (paymentMethods: PaymentMethod[]) => {
+		const list = document.querySelector('[data-pm-list]');
+		const groupTpl = document.querySelector<HTMLTemplateElement>('[data-pm-group-tpl]');
+		const itemTpl = document.querySelector<HTMLTemplateElement>('[data-pm-tpl]');
+
+		if (!(list instanceof HTMLElement) || !groupTpl?.content.firstElementChild || !itemTpl?.content.firstElementChild) return;
+
+		if (paymentMethods.length === 0) {
+			list.innerHTML = '<p class="text-sm text-on-surface-variant">Tidak ada metode pembayaran yang tersedia.</p>';
+			return;
+		}
+
+		const grouped = new Map<PaymentGroupKey, PaymentMethod[]>(
+			PAYMENT_GROUPS.map((group) => [group.key, []]),
+		);
+
+		paymentMethods.forEach((method) => {
+			grouped.get(groupPaymentMethod(method))?.push(method);
+		});
+
+		list.innerHTML = '';
+		let optionIndex = 0;
+
+		PAYMENT_GROUPS.forEach((group) => {
+			const methods = grouped.get(group.key) ?? [];
+			if (!methods.length) return;
+
+			const groupNode = groupTpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
+			const title = groupNode.querySelector('[data-pm-group-title]');
+			const count = groupNode.querySelector('[data-pm-group-count]');
+			const items = groupNode.querySelector('[data-pm-group-items]');
+
+			groupNode.dataset.pmGroupKey = group.key;
+			if (title instanceof HTMLElement) title.textContent = group.title;
+			if (count instanceof HTMLElement) count.textContent = `${methods.length} metode`;
+
+			methods.forEach((method) => {
+				const itemNode = itemTpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
+				bind(itemNode, { name: method.name, image: method.image ?? '' });
+
+				const radio = itemNode.querySelector('[data-pm-radio]');
+				if (radio instanceof HTMLInputElement) {
+					radio.value = String(method.id);
+					radio.checked = optionIndex === 0;
+					radio.required = optionIndex === 0;
+				}
+
+				const img = itemNode.querySelector('[data-pm-image]');
+				if (img instanceof HTMLImageElement && method.image) img.classList.remove('hidden');
+				else if (img) img.remove();
+
+				items?.appendChild(itemNode);
+				optionIndex++;
+			});
+
+			list.appendChild(groupNode);
+		});
+	};
+
 	// Setup interaksi checkout (harga, submit) — dijalankan SETELAH data dirender.
 	const setupCheckout = () => {
 		const form = document.querySelector('[data-checkout-form]');
 		if (!(form instanceof HTMLFormElement) || form.dataset.checkoutReady === 'true') return;
 		form.dataset.checkoutReady = 'true';
 
-		const ticketRadios = form.querySelectorAll('[data-ticket-radio]');
-		const selectedTicketInput = form.querySelector('[data-selected-ticket-index]');
 		const stickyTotal = document.querySelector('[data-sticky-total]');
 		const priceSubtotal = document.querySelector('[data-price-subtotal]');
 		const priceTotal = document.querySelector('[data-price-total]');
@@ -123,15 +220,6 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			if (priceQtyBadge instanceof HTMLElement) priceQtyBadge.textContent = `×${currentQty}`;
 		};
 
-		ticketRadios.forEach((radio) => {
-			if (!(radio instanceof HTMLInputElement)) return;
-			radio.addEventListener('change', () => {
-				if (selectedTicketInput instanceof HTMLInputElement) selectedTicketInput.value = radio.value;
-				currentTicketIndex = Number(radio.value);
-				updatePriceDisplay();
-			});
-		});
-
 		document.addEventListener('checkout:qty-change', (e) => {
 			currentQty = (e as CustomEvent<{ qty: number }>).detail.qty;
 			updatePriceDisplay();
@@ -144,8 +232,6 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			updatePriceDisplay();
 		});
 
-		const checkedRadio = form.querySelector('[data-ticket-radio]:checked');
-		if (checkedRadio instanceof HTMLInputElement) currentTicketIndex = Number(checkedRadio.value);
 		updatePriceDisplay();
 
 		form.addEventListener('submit', async (e) => {
@@ -154,14 +240,10 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			const resetBtn = () => {
 				if (submitBtn instanceof HTMLButtonElement) {
 					submitBtn.disabled = false;
+					submitBtn.removeAttribute('aria-busy');
 					submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]" data-icon="payment">payment</span> Lanjut Bayar';
 				}
 			};
-			if (submitBtn instanceof HTMLButtonElement) {
-				submitBtn.disabled = true;
-				submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Memproses…';
-			}
-
 			// Collect attendees
 			const pengunjung: Array<{ name: string; email: string; telepon: string }> = [];
 			let idx = 0;
@@ -178,8 +260,28 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 				form.querySelector<HTMLInputElement>('[name="payment_method_id"]:checked')?.value ?? '0', 10
 			);
 
-			if (!paymentMethodId) { alert('Pilih metode pembayaran terlebih dahulu.'); resetBtn(); return; }
-			if (pengunjung.length === 0) { alert('Lengkapi data peserta.'); resetBtn(); return; }
+			const invalidAttendeeField = Array.from(form.querySelectorAll<HTMLElement>('[data-attendee-block]'))
+				.filter((block) => Number(block.dataset.attendeeIndex) <= currentQty)
+				.flatMap((block) => Array.from(block.querySelectorAll<HTMLInputElement>('[data-attendee-field]')))
+				.find((field) => !field.checkValidity());
+
+			if (invalidAttendeeField || pengunjung.length < currentQty) {
+				alert('Lengkapi data volunteer terlebih dahulu.');
+				document.dispatchEvent(new CustomEvent('checkout:open-modal', { detail: { name: 'volunteer' } }));
+				window.setTimeout(() => invalidAttendeeField?.reportValidity(), 100);
+				return;
+			}
+			if (!paymentMethodId) {
+				alert('Pilih metode pembayaran terlebih dahulu.');
+				document.dispatchEvent(new CustomEvent('checkout:open-modal', { detail: { name: 'payment' } }));
+				return;
+			}
+
+			if (submitBtn instanceof HTMLButtonElement) {
+				submitBtn.disabled = true;
+				submitBtn.setAttribute('aria-busy', 'true');
+				submitBtn.innerHTML = '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span><span>Memproses...</span>';
+			}
 
 			const body = {
 				event_slug: form.dataset.eventSlug ?? '',
@@ -240,55 +342,16 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			const event = mapToEventDetail(eventRes.data);
 			const eventId = eventRes.data.id;
 			const paymentMethods = pmRes.data;
-			const firstTicket = event.tickets[0];
 
 			document.title = `Checkout – ${event.title} | Zillenial Action`;
 
 			// Isi field statis
 			bind(document, {
-				image: event.image,
-				imageAlt: event.imageAlt,
-				category: event.category,
-				title: event.title,
-				date: event.date,
-				venue: event.venue,
-				location: event.location,
-				summaryTicketName: firstTicket?.name ?? '—',
-				summaryTicketDescription: firstTicket?.description ?? '',
-				summaryTicketPrice: firstTicket?.priceLabel ?? '—',
 				backHref: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
 			});
 
-			// Render daftar tiket
-			renderList('[data-ticket-list]', '[data-ticket-tpl]', event.tickets.map((t) => ({
-				name: t.name, description: t.description, status: t.status, priceLabel: t.priceLabel,
-			})), (node, _item, i) => {
-				const radio = node.querySelector('[data-ticket-radio]');
-				if (radio instanceof HTMLInputElement) {
-					radio.value = String(i);
-					radio.checked = i === 0;
-				}
-			});
-
-			// Render metode pembayaran
-			if (paymentMethods.length === 0) {
-				const list = document.querySelector('[data-pm-list]');
-				if (list instanceof HTMLElement) list.innerHTML = '<p class="text-sm text-on-surface-variant">Tidak ada metode pembayaran yang tersedia.</p>';
-			} else {
-				renderList('[data-pm-list]', '[data-pm-tpl]', paymentMethods.map((pm) => ({
-					name: pm.name, image: pm.image ?? '',
-				})), (node, item, i) => {
-					const radio = node.querySelector('[data-pm-radio]');
-					if (radio instanceof HTMLInputElement) {
-						radio.value = String(paymentMethods[i]!.id);
-						radio.checked = i === 0;
-						radio.required = i === 0;
-					}
-					const img = node.querySelector('[data-pm-image]');
-					if (img instanceof HTMLImageElement && item.image) img.classList.remove('hidden');
-					else if (img) img.remove();
-				});
-			}
+			renderPaymentMethods(paymentMethods);
+			document.dispatchEvent(new CustomEvent('checkout:payment-methods-rendered'));
 
 			// Isi dataset form untuk skrip harga & submit
 			form.dataset.eventSlug = event.slug;

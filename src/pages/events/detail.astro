@@ -13,13 +13,13 @@ import type { EventDetail } from '../../data/events';
 const skeleton: EventDetail = {
 	slug: '', title: 'Memuat…', date: '—', location: '—', venue: '—', category: '—',
 	status: '—', image: '', imageAlt: '', summary: '', impactNote: '', stats: [],
-	highlights: [], tickets: [], agenda: [], notes: [],
+	highlights: [], tickets: [], agenda: [], notes: [], directionUrl: '',
 };
 ---
 
 <Layout title="Detail Event | Zillenial Action">
 	<EventDetailHero event={skeleton} />
-	<main class="relative z-20 -mt-10 space-y-lg px-gutter pb-44">
+	<main class="relative z-20 -mt-10 space-y-lg px-gutter pb-28">
 		<EventSummaryCard event={skeleton} />
 		<EventHighlights event={skeleton} />
 		<EventTickets event={skeleton} />
@@ -54,13 +54,38 @@ const skeleton: EventDetail = {
 				location: event.location,
 				summary: event.summary,
 				venue: event.venue,
+				directionUrl: event.directionUrl ?? '',
 				impactNote: event.impactNote,
 				price: event.tickets[0]?.priceLabel ?? 'Info menyusul',
 				href: `/checkout/detail?slug=${encodeURIComponent(event.slug)}`,
 			});
 
+			const directionLink = document.querySelector('[data-direction-link]');
+			if (directionLink instanceof HTMLAnchorElement) {
+				const hasDirection = Boolean(event.directionUrl);
+				directionLink.classList.toggle('hidden', !hasDirection);
+				directionLink.setAttribute('aria-hidden', hasDirection ? 'false' : 'true');
+			}
+
+			const impactNote = document.querySelector('[data-impact-note]');
+			if (impactNote instanceof HTMLElement) {
+				impactNote.classList.toggle('hidden', !event.impactNote);
+			}
+
 			renderList('[data-tickets-list]', '[data-tickets-tpl]', event.tickets.map((t) => ({
 				name: t.name, description: t.description, status: t.status, priceLabel: t.priceLabel,
+			})));
+
+			const highlightsSection = document.querySelector('[data-highlights-section]');
+			highlightsSection?.classList.toggle('hidden', event.highlights.length === 0);
+			renderList('[data-highlights-list]', '[data-highlights-tpl]', event.highlights.map((text) => ({ text })));
+
+			const agendaSection = document.querySelector('[data-agenda-section]');
+			agendaSection?.classList.toggle('hidden', event.agenda.length === 0);
+			renderList('[data-agenda-list]', '[data-agenda-tpl]', event.agenda.map((item) => ({
+				timeLabel: item.timeLabel,
+				title: item.title,
+				description: item.description,
 			})));
 
 			renderList('[data-notes-list]', '[data-notes-tpl]', event.notes.map((text) => ({ text })));

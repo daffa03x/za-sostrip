@@ -8,9 +8,9 @@ interface Props {
 const { event } = Astro.props;
 ---
 
-<section data-reveal-scope>
+<section class={event.agenda.length ? '' : 'hidden'} data-reveal-scope data-agenda-section>
 	<h2 class="mb-md font-headline-md text-headline-md text-on-background" data-reveal>Agenda event</h2>
-	<div class="relative space-y-sm before:absolute before:left-[17px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-outline-variant" data-reveal-stagger>
+	<div class="relative space-y-sm before:absolute before:left-[17px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-outline-variant" data-reveal-stagger data-agenda-list>
 		{
 			event.agenda.map((item) => (
 				<article class="relative flex gap-sm" data-reveal>
@@ -18,12 +18,24 @@ const { event } = Astro.props;
 						<span class="material-symbols-outlined text-[18px]" data-icon="schedule">schedule</span>
 					</div>
 					<div class="flex-1 rounded-2xl bg-surface-container-lowest p-md">
-						<p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">{item.timeLabel}</p>
-						<h3 class="font-black leading-tight text-on-surface">{item.title}</h3>
-						<p class="mt-1 text-body-sm text-on-surface-variant">{item.description}</p>
+						<p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary" data-bind="timeLabel">{item.timeLabel}</p>
+						<h3 class="font-black leading-tight text-on-surface" data-bind="title">{item.title}</h3>
+						<p class="mt-1 text-body-sm text-on-surface-variant" data-bind="description">{item.description}</p>
 					</div>
 				</article>
 			))
 		}
 	</div>
+	<template data-agenda-tpl>
+		<article class="relative flex gap-sm" data-reveal>
+			<div class="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-[0_4px_14px_-6px_rgba(125,41,127,0.8)]">
+				<span class="material-symbols-outlined text-[18px]" data-icon="schedule">schedule</span>
+			</div>
+			<div class="flex-1 rounded-2xl bg-surface-container-lowest p-md">
+				<p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary" data-bind="timeLabel"></p>
+				<h3 class="font-black leading-tight text-on-surface" data-bind="title"></h3>
+				<p class="mt-1 text-body-sm text-on-surface-variant" data-bind="description"></p>
+			</div>
+		</article>
+	</template>
 </section>

@@ -2,8 +2,60 @@
 ---
 
 <section data-reveal-scope data-form-section>
-	<h2 class="mb-md font-headline-md text-headline-md text-on-background" data-reveal>Data peserta</h2>
-	<div class="space-y-md" data-reveal-stagger>
+	<div
+		class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]"
+		data-reveal
+	>
+		<div class="flex items-start justify-between gap-sm">
+			<div class="min-w-0 flex-1">
+				<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Data volunteer</p>
+				<h2 class="mt-0.5 font-headline-md text-headline-md text-on-surface">Informasi peserta</h2>
+				<p class="mt-xs text-body-sm text-on-surface-variant" data-volunteer-summary>
+					Belum diisi. Lengkapi data volunteer sebelum lanjut bayar.
+				</p>
+			</div>
+			<button
+				type="button"
+				class="inline-flex shrink-0 items-center gap-xs rounded-full bg-primary px-sm py-xs text-xs font-black text-white shadow-[0_8px_18px_-12px_rgba(125,41,127,0.8)]"
+				data-open-modal="volunteer"
+			>
+				<span class="material-symbols-outlined text-[16px]" data-icon="edit">edit</span>
+				Isi Data
+			</button>
+		</div>
+	</div>
+
+	<div
+		class="fixed inset-0 z-50 hidden px-gutter py-lg"
+		data-modal="volunteer"
+		aria-hidden="true"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="volunteer-modal-title"
+	>
+		<button
+			type="button"
+			class="absolute inset-0 h-full w-full bg-black/45"
+			data-close-modal="volunteer"
+			aria-label="Tutup modal data volunteer"
+		></button>
+		<div class="relative mx-auto flex max-h-[85vh] w-full max-w-[430px] flex-col overflow-hidden rounded-2xl bg-background shadow-[0_24px_80px_-32px_rgba(0,0,0,0.55)]">
+			<div class="flex items-start justify-between gap-sm border-b border-outline-variant/30 bg-white px-md py-sm">
+				<div>
+					<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Data volunteer</p>
+					<h2 id="volunteer-modal-title" class="font-headline-md text-headline-md text-on-surface">Isi data volunteer</h2>
+				</div>
+				<button
+					type="button"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant"
+					data-close-modal="volunteer"
+					aria-label="Tutup"
+				>
+					<span class="material-symbols-outlined text-[20px]" data-icon="close">close</span>
+				</button>
+			</div>
+
+			<div class="space-y-md overflow-y-auto p-md" data-reveal-stagger>
 		{
 			[1, 2, 3].map((num) => (
 				<div
@@ -18,7 +70,7 @@
 							{num}
 						</span>
 						<p class="text-sm font-black text-on-surface">
-							{num === 1 ? 'Peserta pertama (kamu)' : `Peserta ke-${num}`}
+							{num === 1 ? 'Volunteer pertama (kamu)' : `Volunteer ke-${num}`}
 						</p>
 					</div>
 
@@ -103,38 +155,6 @@
 								/>
 							</div>
 						</div>
-
-						<div>
-							<label
-								class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
-								for={`checkout-gender-${num}`}
-							>
-								Jenis kelamin
-							</label>
-							<div class="relative">
-								<span
-									class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
-									data-icon="wc"
-								>
-									wc
-								</span>
-								<select
-									class="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-									id={`checkout-gender-${num}`}
-									name={`attendees[${num - 1}][gender]`}
-								>
-									<option value="">Pilih jenis kelamin</option>
-									<option value="male">Laki-laki</option>
-									<option value="female">Perempuan</option>
-								</select>
-								<span
-									class="material-symbols-outlined pointer-events-none absolute right-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
-									data-icon="expand_more"
-								>
-									expand_more
-								</span>
-							</div>
-						</div>
 					</div>
 				</div>
 			))
@@ -144,15 +164,79 @@
 			<span class="font-bold text-error">*</span> Wajib diisi. Data digunakan untuk keperluan tiket dan konfirmasi
 			sosial trip.
 		</p>
+			</div>
+
+			<div class="flex gap-sm border-t border-outline-variant/30 bg-white px-md py-sm">
+				<button
+					type="button"
+					class="flex min-h-11 flex-1 items-center justify-center rounded-full border border-outline-variant bg-white px-md text-sm font-black text-on-surface"
+					data-close-modal="volunteer"
+				>
+					Nanti
+				</button>
+				<button
+					type="button"
+					class="flex min-h-11 flex-1 items-center justify-center rounded-full bg-primary px-md text-sm font-black text-white"
+					data-save-volunteer
+				>
+					Simpan
+				</button>
+			</div>
+		</div>
 	</div>
 </section>
 
 <script>
 	const setupAttendeeBlocks = () => {
+		const modal = document.querySelector('[data-modal="volunteer"]');
+		const summary = document.querySelector('[data-volunteer-summary]');
 		const blocks = document.querySelectorAll('[data-attendee-block]');
-		if (!blocks.length) return;
+		if (!(modal instanceof HTMLElement) || !blocks.length) return;
+
+		if (modal.dataset.modalReady === 'true') return;
+		modal.dataset.modalReady = 'true';
+
+		let currentQty = 1;
+
+		const getVisibleBlocks = () => Array.from(blocks).filter((block) => {
+			if (!(block instanceof HTMLElement)) return false;
+			return Number(block.dataset.attendeeIndex) <= currentQty;
+		}) as HTMLElement[];
+
+		const updateSummary = () => {
+			if (!(summary instanceof HTMLElement)) return;
+			const names = getVisibleBlocks()
+				.map((block) => block.querySelector<HTMLInputElement>('[name$="[name]"]')?.value.trim() ?? '')
+				.filter(Boolean);
+
+			if (!names.length) {
+				summary.textContent = 'Belum diisi. Lengkapi data volunteer sebelum lanjut bayar.';
+				return;
+			}
+
+			const remaining = Math.max(0, currentQty - names.length);
+			summary.textContent = remaining > 0
+				? `${names.join(', ')}. ${remaining} data volunteer belum lengkap.`
+				: `${names.join(', ')}. Data volunteer lengkap.`;
+		};
+
+		const openModal = () => {
+			modal.classList.remove('hidden');
+			modal.setAttribute('aria-hidden', 'false');
+			document.body.style.overflow = 'hidden';
+			const firstInput = modal.querySelector<HTMLInputElement>('[data-attendee-field]');
+			window.setTimeout(() => firstInput?.focus(), 50);
+		};
+
+		const closeModal = () => {
+			modal.classList.add('hidden');
+			modal.setAttribute('aria-hidden', 'true');
+			document.body.style.overflow = '';
+			updateSummary();
+		};
 
 		const showBlocks = (qty: number) => {
+			currentQty = qty;
 			blocks.forEach((block) => {
 				if (!(block instanceof HTMLElement)) return;
 				const idx = Number(block.dataset.attendeeIndex);
@@ -167,9 +251,33 @@
 					}
 				});
 			});
+			updateSummary();
 		};
 
-		// Listen for quantity changes from CheckoutTicketSelector
+		document.querySelectorAll('[data-open-modal="volunteer"]').forEach((btn) => {
+			btn.addEventListener('click', openModal);
+		});
+		document.querySelectorAll('[data-close-modal="volunteer"]').forEach((btn) => {
+			btn.addEventListener('click', closeModal);
+		});
+		document.querySelector('[data-save-volunteer]')?.addEventListener('click', () => {
+			const invalid = getVisibleBlocks()
+				.flatMap((block) => Array.from(block.querySelectorAll<HTMLInputElement>('[data-attendee-field]')))
+				.find((field) => !field.checkValidity());
+
+			if (invalid) {
+				invalid.reportValidity();
+				return;
+			}
+
+			closeModal();
+		});
+		modal.addEventListener('input', updateSummary);
+		modal.addEventListener('change', updateSummary);
+		document.addEventListener('checkout:open-modal', (e) => {
+			const detail = (e as CustomEvent<{ name: string }>).detail;
+			if (detail.name === 'volunteer') openModal();
+		});
 		document.addEventListener('checkout:qty-change', (e) => {
 			const qty = (e as CustomEvent<{ qty: number }>).detail.qty;
 			showBlocks(qty);
