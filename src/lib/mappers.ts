@@ -26,14 +26,28 @@ function formatRupiah(amount: number): string {
 	}).format(amount);
 }
 
+function isActiveStatus(status: EventListItem['status']): boolean {
+	if (typeof status === 'string') {
+		const normalized = status.trim().toLowerCase();
+		if (!normalized) return false;
+		return !['0', 'n', 'no', 'false', 'nonaktif', 'inactive', 'tutup', 'closed'].includes(normalized);
+	}
+
+	return Boolean(status);
+}
+
+function isSoldOut(item: EventListItem): boolean {
+	return Boolean(item.is_sold_out) || !isActiveStatus(item.status) || item.sisa_tiket <= 0;
+}
+
 function deriveStatus(item: EventListItem): string {
-	if (!item.status) return 'Tutup';
-	if (item.sisa_tiket <= 0) return 'Tiket Habis';
+	if (isSoldOut(item)) return 'Sold Out';
 	return 'Tersedia';
 }
 
 export function mapToEventDetail(api: EventDetailAPI): EventDetail {
 	const status = deriveStatus(api);
+	const soldOut = isSoldOut(api);
 
 	return {
 		slug: api.slug,
@@ -44,6 +58,7 @@ export function mapToEventDetail(api: EventDetailAPI): EventDetail {
 		directionUrl: api.direction_url ?? '',
 		category: api.mitra || 'Event',
 		status,
+		isSoldOut: soldOut,
 		image: api.image ?? '',
 		imageAlt: `Banner event ${api.name}`,
 		summary: api.deskripsi ?? '',
@@ -59,7 +74,7 @@ export function mapToEventDetail(api: EventDetailAPI): EventDetail {
 				name: 'Tiket Event',
 				priceLabel: api.harga > 0 ? formatRupiah(api.harga) : 'Gratis',
 				priceRaw: api.harga,
-				description: api.sisa_tiket > 0 ? `${api.sisa_tiket} tiket tersisa` : 'Tiket habis',
+				description: soldOut ? 'Tiket habis' : `${api.sisa_tiket} tiket tersisa`,
 				status,
 			},
 		],
@@ -70,12 +85,13 @@ export function mapToEventDetail(api: EventDetailAPI): EventDetail {
 				description: item.description ?? '',
 			}))
 			.filter((item) => item.timeLabel || item.title || item.description),
-		notes: api.sisa_tiket <= 0 ? ['Tiket untuk event ini sudah habis.'] : [],
+		notes: soldOut ? ['Event ini sudah Sold Out.'] : [],
 	};
 }
 
 export function mapListItemToEventDetail(api: EventListItem): EventDetail {
 	const status = deriveStatus(api);
+	const soldOut = isSoldOut(api);
 	return {
 		slug: api.slug,
 		title: api.name,
@@ -85,6 +101,7 @@ export function mapListItemToEventDetail(api: EventListItem): EventDetail {
 		directionUrl: '',
 		category: api.mitra ?? 'Event',
 		status,
+		isSoldOut: soldOut,
 		image: api.image ?? '',
 		imageAlt: `Banner event ${api.name}`,
 		summary: '',
@@ -96,7 +113,7 @@ export function mapListItemToEventDetail(api: EventListItem): EventDetail {
 				name: 'Tiket Event',
 				priceLabel: api.harga > 0 ? formatRupiah(api.harga) : 'Gratis',
 				priceRaw: api.harga,
-				description: '',
+				description: soldOut ? 'Tiket habis' : `${api.sisa_tiket} tiket tersisa`,
 				status,
 			},
 		],

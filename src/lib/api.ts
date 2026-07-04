@@ -9,8 +9,9 @@ export interface EventListItem {
 	waktu_mulai: string;
 	kota: string | null;
 	mitra: string | null;
-	status: boolean;
+	status: boolean | number | string | null;
 	sisa_tiket: number;
+	is_sold_out?: boolean;
 }
 
 export interface EventDetailAPI extends EventListItem {
