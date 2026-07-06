@@ -92,6 +92,12 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		});
 	}
 
+	const paymentUrl = (path: string, orderId: string, accessToken?: string) => {
+		const params = new URLSearchParams({ order_id: orderId });
+		const hash = accessToken ? `#token=${encodeURIComponent(accessToken)}` : '';
+		return `${path}?${params.toString()}${hash}`;
+	};
+
 	const PAYMENT_GROUPS = [
 		{ key: 'va', title: 'Virtual Account' },
 		{ key: 'ewallet', title: 'E-Wallet' },
@@ -333,15 +339,18 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 					body: JSON.stringify(body),
 				});
-				const data = await res.json() as { success?: boolean; order_id?: string; snap_token?: string; payment_channel?: string | null; message?: string };
+				const data = await res.json() as { success?: boolean; order_id?: string; access_token?: string; snap_token?: string; payment_channel?: string | null; message?: string };
 
 				if (!res.ok || !data.success) { alert(data.message ?? 'Checkout gagal. Coba lagi.'); resetBtn(); return; }
 
-				const { order_id, snap_token, payment_channel } = data;
+				const { order_id, access_token, snap_token, payment_channel } = data;
+
+				if (!order_id) { alert('Gagal mendapatkan nomor pesanan.'); resetBtn(); return; }
+				if (!access_token) { alert('Gagal mendapatkan akses pembayaran. Silakan coba lagi.'); resetBtn(); return; }
 
 				// Channel custom (VA/QRIS/e-wallet) → tampilan instruksi bayar sendiri, bukan modal Midtrans.
 				if (payment_channel) {
-					window.location.href = `/payment?order_id=${order_id}`;
+					window.location.href = paymentUrl('/payment', order_id, access_token);
 					return;
 				}
 
@@ -350,9 +359,9 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 
 				await loadSnap(snapUrl, snapClientKey);
 				window.snap.pay(snap_token, {
-					onSuccess:  () => { window.location.href = `/payment/success?order_id=${order_id}`; },
-					onPending:  () => { window.location.href = `/payment/pending?order_id=${order_id}`; },
-					onError:    () => { window.location.href = `/payment/failed?order_id=${order_id}`; },
+					onSuccess:  () => { window.location.href = paymentUrl('/payment/success', order_id); },
+					onPending:  () => { window.location.href = paymentUrl('/payment/pending', order_id, access_token); },
+					onError:    () => { window.location.href = paymentUrl('/payment/failed', order_id, access_token); },
 					onClose:    () => { resetBtn(); },
 				});
 			} catch {
