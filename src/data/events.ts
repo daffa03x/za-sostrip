@@ -26,6 +26,7 @@ export interface EventDetail {
 	directionUrl?: string;
 	category: string;
 	status: string;
+	isSoldOut?: boolean;
 	image: string;
 	imageAlt: string;
 	badgeLines?: [string, string];

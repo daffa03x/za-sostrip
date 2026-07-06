@@ -38,7 +38,7 @@ import LoadingState from '../ui/LoadingState.astro';
 	</div>
 
 	<template data-rec-tpl>
-		<EventCard title="" date="" location="" image="" imageAlt="" href="#" />
+		<EventCard title="" date="" location="" image="" imageAlt="" href="#" status="" />
 	</template>
 </section>
 
@@ -72,6 +72,7 @@ import LoadingState from '../ui/LoadingState.astro';
 					location: event.location,
 					image: event.image,
 					imageAlt: event.imageAlt,
+					status: event.status,
 					href: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
 				})),
 			);

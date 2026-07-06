@@ -74,12 +74,20 @@ import Layout from '../../layouts/Layout.astro';
 
 <script>
 	const params = new URLSearchParams(window.location.search);
+	const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
 	const orderId = params.get('order_id') ?? '—';
+	const accessToken =
+		hashParams.get('token') ??
+		params.get('token') ??
+		(orderId !== '—' ? sessionStorage.getItem(`payment_access_token_${orderId}`) : '') ??
+		'';
 	const el = document.getElementById('failed-order-id');
 	if (el) el.textContent = orderId;
 
 	const retryLink = document.getElementById('retry-payment-link');
 	if (retryLink instanceof HTMLAnchorElement && orderId !== '—') {
-		retryLink.href = `/payment?order_id=${orderId}`;
+		const retryParams = new URLSearchParams({ order_id: orderId });
+		const retryHash = accessToken ? `#token=${encodeURIComponent(accessToken)}` : '';
+		retryLink.href = `/payment?${retryParams.toString()}${retryHash}`;
 	}
 </script>

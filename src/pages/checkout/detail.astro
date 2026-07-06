@@ -11,7 +11,7 @@ import type { EventDetail } from '../../data/events';
 const skeleton: EventDetail = {
 	slug: '', title: 'Memuat…', date: '—', location: '—', venue: '—', category: '—',
 	status: '—', image: '', imageAlt: '', summary: '', impactNote: '', stats: [],
-	highlights: [], tickets: [], agenda: [], notes: [],
+	highlights: [], tickets: [], agenda: [], notes: [], isSoldOut: false,
 };
 // Env PUBLIC_* di-inline saat build.
 const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
@@ -46,8 +46,18 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		data-snap-url={snapUrl}
 		data-snap-client-key={snapClientKey}
 		data-tickets="[]"
+		data-sold-out="false"
 	>
 		<input type="hidden" name="ticket_index" value="0" data-selected-ticket-index />
+
+		<p
+			class="hidden rounded-2xl border border-error/20 bg-error-container/10 px-md py-sm text-body-sm font-bold text-error"
+			role="status"
+			aria-live="polite"
+			data-sold-out-notice
+		>
+			Event ini sudah Sold Out. Checkout tidak tersedia.
+		</p>
 
 		<CheckoutTicketSelector />
 		<CheckoutPersonalForm />
@@ -81,6 +91,12 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			document.head.appendChild(s);
 		});
 	}
+
+	const paymentUrl = (path: string, orderId: string, accessToken?: string) => {
+		const params = new URLSearchParams({ order_id: orderId });
+		const hash = accessToken ? `#token=${encodeURIComponent(accessToken)}` : '';
+		return `${path}?${params.toString()}${hash}`;
+	};
 
 	const PAYMENT_GROUPS = [
 		{ key: 'va', title: 'Virtual Account' },
@@ -183,6 +199,24 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		});
 	};
 
+	const updateCheckoutSoldOutState = (soldOut: boolean) => {
+		const notice = document.querySelector('[data-sold-out-notice]');
+		if (notice instanceof HTMLElement) notice.classList.toggle('hidden', !soldOut);
+
+		document.querySelectorAll('[data-qty-minus], [data-qty-plus]').forEach((button) => {
+			if (button instanceof HTMLButtonElement) button.disabled = soldOut || button.disabled;
+		});
+
+		const submitBtn = document.querySelector('[data-checkout-submit]');
+		if (submitBtn instanceof HTMLButtonElement) {
+			submitBtn.disabled = soldOut;
+			submitBtn.setAttribute('aria-disabled', soldOut ? 'true' : 'false');
+			if (soldOut) {
+				submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]" data-icon="block">block</span> Sold Out';
+			}
+		}
+	};
+
 	// Setup interaksi checkout (harga, submit) — dijalankan SETELAH data dirender.
 	const setupCheckout = () => {
 		const form = document.querySelector('[data-checkout-form]');
@@ -238,12 +272,20 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			e.preventDefault();
 			const submitBtn = document.querySelector('[data-checkout-submit]');
 			const resetBtn = () => {
+				if (form.dataset.soldOut === 'true') return;
 				if (submitBtn instanceof HTMLButtonElement) {
 					submitBtn.disabled = false;
 					submitBtn.removeAttribute('aria-busy');
 					submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]" data-icon="payment">payment</span> Lanjut Bayar';
 				}
 			};
+
+			if (form.dataset.soldOut === 'true') {
+				alert('Event ini sudah Sold Out. Checkout tidak tersedia.');
+				updateCheckoutSoldOutState(true);
+				return;
+			}
+
 			// Collect attendees
 			const pengunjung: Array<{ name: string; email: string; telepon: string }> = [];
 			let idx = 0;
@@ -297,15 +339,18 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 					body: JSON.stringify(body),
 				});
-				const data = await res.json() as { success?: boolean; order_id?: string; snap_token?: string; payment_channel?: string | null; message?: string };
+				const data = await res.json() as { success?: boolean; order_id?: string; access_token?: string; snap_token?: string; payment_channel?: string | null; message?: string };
 
 				if (!res.ok || !data.success) { alert(data.message ?? 'Checkout gagal. Coba lagi.'); resetBtn(); return; }
 
-				const { order_id, snap_token, payment_channel } = data;
+				const { order_id, access_token, snap_token, payment_channel } = data;
+
+				if (!order_id) { alert('Gagal mendapatkan nomor pesanan.'); resetBtn(); return; }
+				if (!access_token) { alert('Gagal mendapatkan akses pembayaran. Silakan coba lagi.'); resetBtn(); return; }
 
 				// Channel custom (VA/QRIS/e-wallet) → tampilan instruksi bayar sendiri, bukan modal Midtrans.
 				if (payment_channel) {
-					window.location.href = `/payment?order_id=${order_id}`;
+					window.location.href = paymentUrl('/payment', order_id, access_token);
 					return;
 				}
 
@@ -314,9 +359,9 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 
 				await loadSnap(snapUrl, snapClientKey);
 				window.snap.pay(snap_token, {
-					onSuccess:  () => { window.location.href = `/payment/success?order_id=${order_id}`; },
-					onPending:  () => { window.location.href = `/payment/pending?order_id=${order_id}`; },
-					onError:    () => { window.location.href = `/payment/failed?order_id=${order_id}`; },
+					onSuccess:  () => { window.location.href = paymentUrl('/payment/success', order_id); },
+					onPending:  () => { window.location.href = paymentUrl('/payment/pending', order_id, access_token); },
+					onError:    () => { window.location.href = paymentUrl('/payment/failed', order_id, access_token); },
 					onClose:    () => { resetBtn(); },
 				});
 			} catch {
@@ -359,8 +404,10 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			form.dataset.tickets = JSON.stringify(
 				event.tickets.map((t) => ({ name: t.name, priceLabel: t.priceLabel, priceRaw: t.priceRaw ?? 0 })),
 			);
+			form.dataset.soldOut = event.isSoldOut ? 'true' : 'false';
 
 			setupCheckout();
+			updateCheckoutSoldOutState(event.isSoldOut === true);
 		} catch {
 			window.location.replace('/events');
 		}

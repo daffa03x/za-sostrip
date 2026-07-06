@@ -226,16 +226,38 @@ import Layout from '../layouts/Layout.astro';
 	// ── Helpers ──────────────────────────────────────────────────────────────
 	function el(id) { return document.getElementById(id); }
 	function setTxt(id, val) { var e = el(id); if (e) e.textContent = val; }
+	function escapeHtml(value) {
+		var div = document.createElement('div');
+		div.textContent = String(value);
+		return div.innerHTML;
+	}
+	function formatInstructionStep(step) {
+		return escapeHtml(step)
+			.replace(/&lt;strong&gt;/g, '<strong>')
+			.replace(/&lt;\/strong&gt;/g, '</strong>')
+			.replace(/&amp;rarr;/g, '&rarr;');
+	}
 	var fmt = function (n) {
 		return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 	};
 
 	// ── URL params ────────────────────────────────────────────────────────────
 	var p = new URLSearchParams(window.location.search);
+	var h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
 	var orderId = p.get('order_id') || '';
+	var accessToken = h.get('token') || p.get('token') || sessionStorage.getItem('payment_access_token_' + orderId) || '';
 
 	if (!orderId) {
 		window.location.replace('/events');
+	}
+	if (accessToken) {
+		sessionStorage.setItem('payment_access_token_' + orderId, accessToken);
+	}
+
+	function paymentPath(path) {
+		var params = new URLSearchParams({ order_id: orderId });
+		var hash = accessToken ? '#token=' + encodeURIComponent(accessToken) : '';
+		return path + '?' + params.toString() + hash;
 	}
 
 	setTxt('order-id', orderId || 'PENDING');
@@ -412,14 +434,15 @@ import Layout from '../layouts/Layout.astro';
 	// ── Build accordion item HTML ─────────────────────────────────────────────
 	var accordionCount = 0;
 	function buildAccordion(label, stepsArray) {
+		// Only pass static instruction copy from this file; never pass API data to this HTML builder.
 		accordionCount++;
 		var id = 'acc-' + accordionCount;
 		var stepsHtml = stepsArray.map(function (s, i) {
-			return '<li class="flex gap-sm"><span class="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-black text-primary">' + (i + 1) + '</span><span class="text-body-sm text-on-surface-variant">' + s + '</span></li>';
+			return '<li class="flex gap-sm"><span class="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-black text-primary">' + (i + 1) + '</span><span class="text-body-sm text-on-surface-variant">' + formatInstructionStep(s) + '</span></li>';
 		}).join('');
 		return '<div class="overflow-hidden rounded-2xl border border-outline-variant/40 bg-white shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">'
 			+ '<button class="flex w-full items-center justify-between px-md py-sm text-left" type="button" onclick="toggleAcc(\'' + id + '\')">'
-			+ '<span class="text-sm font-black text-on-surface">' + label + '</span>'
+			+ '<span class="text-sm font-black text-on-surface">' + escapeHtml(label) + '</span>'
 			+ '<span class="material-symbols-outlined text-[20px] text-on-surface-variant transition-transform" id="' + id + '-chevron">expand_more</span>'
 			+ '</button>'
 			+ '<div id="' + id + '" class="hidden px-md pb-md">'
@@ -440,6 +463,27 @@ import Layout from '../layouts/Layout.astro';
 	// ── Render payment instructions dari data asli backend ────────────────────
 	var instructionSection = el('payment-instruction-section');
 
+	function hasUsableInstructions(channel, instructions) {
+		instructions = instructions || {};
+		if (!channel) return true;
+		if (channel === 'bank_transfer') return Boolean(instructions.bank && instructions.va_number);
+		if (channel === 'echannel') return Boolean(instructions.bill_key && instructions.biller_code);
+		if (channel === 'qris') return Boolean(instructions.qr_url);
+		if (channel === 'gopay' || channel === 'shopeepay') return Boolean(instructions.deeplink_url || instructions.qr_url);
+		return true;
+	}
+
+	function showInstructionError() {
+		setTxt('page-title', 'Instruksi Belum Tersedia');
+		setTxt('page-subtitle', 'Instruksi pembayaran belum tersedia. Silakan ulangi checkout atau hubungi admin.');
+		var timerEl = el('payment-timer-section');
+		if (timerEl) timerEl.classList.add('hidden');
+		if (confirmBtn) {
+			confirmBtn.disabled = true;
+			confirmBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">error</span> Instruksi Belum Tersedia';
+		}
+	}
+
 	function renderInstructions(channel, instructions) {
 		instructions = instructions || {};
 
@@ -450,6 +494,7 @@ import Layout from '../layouts/Layout.astro';
 			setTxt('va-number', vaNumber);
 
 			var howToContainer = el('va-how-to');
+			if (howToContainer) howToContainer.innerHTML = '';
 			var steps = VA_HOWTO[bankCode] || [];
 			steps.forEach(function (item) {
 				howToContainer.innerHTML += buildAccordion(item.label, item.steps);
@@ -500,6 +545,7 @@ import Layout from '../layouts/Layout.astro';
 			}
 
 			var ewHowTo = el('ew-how-to');
+			if (ewHowTo) ewHowTo.innerHTML = '';
 			var ewSteps = EW_HOWTO[channel] || [];
 			ewSteps.forEach(function (item) {
 				ewHowTo.innerHTML += buildAccordion(item.label, item.steps);
@@ -569,14 +615,14 @@ import Layout from '../layouts/Layout.astro';
 	var pollIv = null;
 	function startStatusPolling() {
 		pollIv = setInterval(function () {
-			api.transaksi.status(orderId).then(function (res) {
+			api.transaksi.status(orderId, accessToken).then(function (res) {
 				var status = res.data.status_pembayaran;
 				if (status === 'Success') {
 					clearInterval(pollIv);
-					window.location.href = '/payment/success?order_id=' + orderId;
+					window.location.href = '/payment/success?order_id=' + encodeURIComponent(orderId);
 				} else if (status === 'Failed') {
 					clearInterval(pollIv);
-					window.location.href = '/payment/failed?order_id=' + orderId;
+					window.location.href = paymentPath('/payment/failed');
 				}
 			}).catch(function () { /* abaikan, coba lagi di polling berikutnya */ });
 		}, 5000);
@@ -589,11 +635,11 @@ import Layout from '../layouts/Layout.astro';
 			confirmBtn.disabled = true;
 			confirmBtn.setAttribute('aria-busy', 'true');
 			confirmBtn.innerHTML = '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span><span>Memeriksa...</span>';
-			api.transaksi.status(orderId).then(function (res) {
+			api.transaksi.status(orderId, accessToken).then(function (res) {
 				var status = res.data.status_pembayaran;
-				if (status === 'Success') { window.location.href = '/payment/success?order_id=' + orderId; return; }
-				if (status === 'Failed') { window.location.href = '/payment/failed?order_id=' + orderId; return; }
-				window.location.href = '/payment/pending?order_id=' + orderId;
+				if (status === 'Success') { window.location.href = '/payment/success?order_id=' + encodeURIComponent(orderId); return; }
+				if (status === 'Failed') { window.location.href = paymentPath('/payment/failed'); return; }
+				window.location.href = paymentPath('/payment/pending');
 			}).catch(function () {
 				confirmBtn.disabled = false;
 				confirmBtn.removeAttribute('aria-busy');
@@ -604,7 +650,7 @@ import Layout from '../layouts/Layout.astro';
 
 	// ── Load data transaksi asli dari backend ──────────────────────────────────
 	function load() {
-		api.transaksi.status(orderId).then(function (res) {
+		api.transaksi.status(orderId, accessToken).then(function (res) {
 			var data = res.data;
 
 			setTxt('order-title',  data.event.name);
@@ -629,9 +675,13 @@ import Layout from '../layouts/Layout.astro';
 			el('order-skeleton').classList.add('hidden');
 			el('order-real').classList.remove('hidden');
 
-			if (data.status_pembayaran === 'Success') { window.location.href = '/payment/success?order_id=' + orderId; return; }
-			if (data.status_pembayaran === 'Failed') { window.location.href = '/payment/failed?order_id=' + orderId; return; }
+			if (data.status_pembayaran === 'Success') { window.location.href = '/payment/success?order_id=' + encodeURIComponent(orderId); return; }
+			if (data.status_pembayaran === 'Failed') { window.location.href = paymentPath('/payment/failed'); return; }
 
+			if (!hasUsableInstructions(data.payment_channel, data.payment_instructions)) {
+				showInstructionError();
+				return;
+			}
 			renderInstructions(data.payment_channel, data.payment_instructions);
 			startCountdown((data.payment_instructions || {}).expiry_time);
 			startStatusPolling();

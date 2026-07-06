@@ -9,8 +9,9 @@ export interface EventListItem {
 	waktu_mulai: string;
 	kota: string | null;
 	mitra: string | null;
-	status: boolean;
+	status: boolean | number | string | null;
 	sisa_tiket: number;
+	is_sold_out?: boolean;
 }
 
 export interface EventDetailAPI extends EventListItem {
@@ -74,6 +75,7 @@ export type PaymentChannel = 'bank_transfer' | 'echannel' | 'gopay' | 'shopeepay
 export interface CheckoutResponse {
 	success: boolean;
 	order_id: string;
+	access_token?: string;
 	snap_token: string;
 	payment_channel?: PaymentChannel | null;
 	payment_instructions?: PaymentInstructions | null;
@@ -85,7 +87,6 @@ export interface TransaksiStatus {
 	status_pembayaran: 'Pending' | 'Success' | 'Failed';
 	total_pembayaran: number;
 	jumlah_tiket: number;
-	snap_token: string | null;
 	payment_channel?: PaymentChannel | null;
 	payment_instructions?: PaymentInstructions | null;
 	event: {
@@ -152,6 +153,9 @@ export const api = {
 			}),
 	},
 	transaksi: {
-		status: (invoice: string) => apiFetch<{ data: TransaksiStatus }>(`/api/transaksi/${invoice}`),
+		status: (invoice: string, token?: string) => {
+			const query = token ? `?token=${encodeURIComponent(token)}` : '';
+			return apiFetch<{ data: TransaksiStatus }>(`/api/transaksi/${encodeURIComponent(invoice)}${query}`);
+		},
 	},
 };
