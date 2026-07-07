@@ -1,0 +1,45 @@
+---
+interface Props {
+	id?: string;
+	label?: string;
+	variant?: 'surface' | 'dark' | 'inline';
+	size?: 'sm' | 'md';
+	class?: string;
+}
+
+const {
+	id,
+	label = 'Memuat data...',
+	variant = 'surface',
+	size = 'md',
+	class: className = '',
+} = Astro.props;
+
+const toneClass = variant === 'dark'
+	? 'text-white/80'
+	: 'text-on-surface-variant';
+const spinnerClass = size === 'sm' ? 'h-4 w-4 border-2' : 'h-5 w-5 border-2';
+const textClass = size === 'sm' ? 'text-sm' : 'text-body-sm';
+---
+
+<div
+	id={id}
+	class:list={[
+		'flex items-center justify-center gap-xs text-center',
+		toneClass,
+		textClass,
+		className,
+	]}
+	role="status"
+	aria-live="polite"
+	aria-busy="true"
+>
+	<span
+		class:list={[
+			'inline-block shrink-0 animate-spin rounded-full border-current border-r-transparent',
+			spinnerClass,
+		]}
+		aria-hidden="true"
+	></span>
+	<span>{label}</span>
+</div>

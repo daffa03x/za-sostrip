@@ -1,0 +1,73 @@
+---
+import EventListCard from '../event/EventListCard.astro';
+import LoadingState from '../ui/LoadingState.astro';
+---
+
+<section class="animate-reveal delay-100" aria-labelledby="event-list-title" data-reveal-scope>
+	<div class="mb-md flex items-end justify-between gap-sm">
+		<h2 id="event-list-title" class="font-headline-md text-headline-md text-on-background">Social Trip</h2>
+		<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary" data-preview-count>0 Social Trip</span>
+	</div>
+	<div class="space-y-sm" data-reveal-stagger data-preview-list>
+		<LoadingState label="Memuat Social Trip..." size="sm" class="py-md" />
+	</div>
+
+	<template data-preview-tpl>
+		<EventListCard event={{ slug: '', title: '', date: '', location: '', venue: '', category: '', status: '', image: '', imageAlt: '', summary: '', impactNote: '', stats: [], highlights: [], tickets: [], agenda: [], notes: [] }} />
+	</template>
+
+	<a
+		class="mt-md flex min-h-12 w-full items-center justify-center rounded-full border border-outline-variant bg-white px-md text-sm font-black text-primary shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)] transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+		href="/events"
+		data-reveal
+	>
+		Lihat Semua
+	</a>
+</section>
+
+<script>
+	import { api } from '../../lib/api';
+	import { mapListItemToEventDetail } from '../../lib/mappers';
+	import { renderList } from '../../lib/csr';
+
+	const previewLimit = 5;
+
+	const load = async () => {
+		const list = document.querySelector('[data-preview-list]');
+		const count = document.querySelector('[data-preview-count]');
+		if (!(list instanceof HTMLElement) || list.dataset.previewReady === 'true') return;
+		list.dataset.previewReady = 'true';
+
+		try {
+			const res = await api.events.list({ per_page: previewLimit });
+			const events = res.data.slice(0, previewLimit).map(mapListItemToEventDetail);
+			if (count instanceof HTMLElement) count.textContent = `${events.length} Social Trip`;
+
+			if (events.length === 0) {
+				list.innerHTML = '<p class="py-md text-center text-sm text-on-surface-variant">Belum ada event yang tersedia.</p>';
+				return;
+			}
+
+			renderList(
+				'[data-preview-list]',
+				'[data-preview-tpl]',
+				events.map((event) => ({
+					href: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
+					image: event.image,
+					imageAlt: event.imageAlt,
+					category: event.category,
+					status: event.status,
+					title: event.title,
+					date: event.date,
+					location: event.location,
+				})),
+			);
+		} catch {
+			if (count instanceof HTMLElement) count.textContent = '0 Social Trip';
+			list.innerHTML = '<p class="py-md text-center text-sm text-on-surface-variant">Belum ada event yang tersedia.</p>';
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
+</script>

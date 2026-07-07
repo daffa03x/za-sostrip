@@ -1,0 +1,418 @@
+---
+import CheckoutTicketSelector from '../../components/checkout/CheckoutTicketSelector.astro';
+import CheckoutPersonalForm from '../../components/checkout/CheckoutPersonalForm.astro';
+import CheckoutVoucherAndSummary from '../../components/checkout/CheckoutVoucherAndSummary.astro';
+import CheckoutPaymentMethod from '../../components/checkout/CheckoutPaymentMethod.astro';
+import CheckoutStickyCTA from '../../components/checkout/CheckoutStickyCTA.astro';
+import Layout from '../../layouts/Layout.astro';
+import type { EventDetail } from '../../data/events';
+
+// Kerangka placeholder; data asli diisi di browser berdasarkan ?slug.
+const skeleton: EventDetail = {
+	slug: '', title: 'Memuat…', date: '—', location: '—', venue: '—', category: '—',
+	status: '—', image: '', imageAlt: '', summary: '', impactNote: '', stats: [],
+	highlights: [], tickets: [], agenda: [], notes: [], isSoldOut: false,
+};
+// Env PUBLIC_* di-inline saat build.
+const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
+const snapUrl = import.meta.env.PUBLIC_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
+const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
+---
+
+<Layout title="Checkout | Zillenial Action">
+	<header class="px-gutter pb-xs pt-14" data-reveal-scope>
+		<a
+			class="mb-md inline-flex items-center gap-xs text-sm font-bold text-primary"
+			href="/events"
+			data-bind-href="backHref"
+			aria-label="Kembali ke detail event"
+		>
+			<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+			Kembali
+		</a>
+		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" data-reveal>Checkout</h1>
+		<p class="mt-xs text-body-sm text-on-surface-variant" data-reveal>Lengkapi data untuk mendaftar ke event ini.</p>
+	</header>
+
+	<form
+		id="checkout-form"
+		class="space-y-md px-gutter pb-28"
+		novalidate
+		data-reveal-scope
+		data-checkout-form
+		data-event-slug=""
+		data-event-id="0"
+		data-backend-url={backendUrl}
+		data-snap-url={snapUrl}
+		data-snap-client-key={snapClientKey}
+		data-tickets="[]"
+		data-sold-out="false"
+	>
+		<input type="hidden" name="ticket_index" value="0" data-selected-ticket-index />
+
+		<p
+			class="hidden rounded-2xl border border-error/20 bg-error-container/10 px-md py-sm text-body-sm font-bold text-error"
+			role="status"
+			aria-live="polite"
+			data-sold-out-notice
+		>
+			Event ini sudah Sold Out. Checkout tidak tersedia.
+		</p>
+
+		<CheckoutTicketSelector />
+		<CheckoutPersonalForm />
+		<CheckoutPaymentMethod />
+		<CheckoutVoucherAndSummary />
+	</form>
+
+	<CheckoutStickyCTA event={skeleton} />
+</Layout>
+
+<script>
+	import { api } from '../../lib/api';
+	import type { PaymentMethod } from '../../lib/api';
+	import { mapToEventDetail } from '../../lib/mappers';
+	import { bind, queryParam } from '../../lib/csr';
+
+	declare global {
+		interface Window {
+			snap: { pay: (token: string, options: Record<string, unknown>) => void };
+		}
+	}
+
+	function loadSnap(snapUrl: string, clientKey: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if (typeof window.snap !== 'undefined') { resolve(); return; }
+			const s = document.createElement('script');
+			s.src = snapUrl;
+			s.setAttribute('data-client-key', clientKey);
+			s.onload = () => resolve();
+			s.onerror = () => reject(new Error('Gagal memuat Snap.js'));
+			document.head.appendChild(s);
+		});
+	}
+
+	const paymentUrl = (path: string, orderId: string, accessToken?: string) => {
+		const params = new URLSearchParams({ order_id: orderId });
+		const hash = accessToken ? `#token=${encodeURIComponent(accessToken)}` : '';
+		return `${path}?${params.toString()}${hash}`;
+	};
+
+	const PAYMENT_GROUPS = [
+		{ key: 'va', title: 'Virtual Account' },
+		{ key: 'ewallet', title: 'E-Wallet' },
+		{ key: 'qris', title: 'QRIS' },
+		{ key: 'card', title: 'Kartu Kredit / Debit' },
+		{ key: 'other', title: 'Metode Lain' },
+	] as const;
+
+	type PaymentGroupKey = typeof PAYMENT_GROUPS[number]['key'];
+
+	const groupPaymentMethod = (method: PaymentMethod): PaymentGroupKey => {
+		const channel = method.midtrans_payment_type ?? '';
+		const text = `${method.name} ${method.type} ${channel}`.toLowerCase();
+
+		if (
+			channel === 'bank_transfer' ||
+			channel === 'echannel' ||
+			text.includes('virtual account') ||
+			text.includes('bill payment')
+		) return 'va';
+
+		if (
+			channel === 'gopay' ||
+			channel === 'shopeepay' ||
+			text.includes('gopay') ||
+			text.includes('shopee') ||
+			text.includes('wallet') ||
+			text.includes('e-wallet')
+		) return 'ewallet';
+
+		if (channel === 'qris' || text.includes('qris')) return 'qris';
+
+		if (
+			text.includes('credit') ||
+			text.includes('debit') ||
+			text.includes('kartu') ||
+			text.includes('card')
+		) return 'card';
+
+		return 'other';
+	};
+
+	const renderPaymentMethods = (paymentMethods: PaymentMethod[]) => {
+		const list = document.querySelector('[data-pm-list]');
+		const groupTpl = document.querySelector<HTMLTemplateElement>('[data-pm-group-tpl]');
+		const itemTpl = document.querySelector<HTMLTemplateElement>('[data-pm-tpl]');
+
+		if (!(list instanceof HTMLElement) || !groupTpl?.content.firstElementChild || !itemTpl?.content.firstElementChild) return;
+
+		if (paymentMethods.length === 0) {
+			list.innerHTML = '<p class="text-sm text-on-surface-variant">Tidak ada metode pembayaran yang tersedia.</p>';
+			return;
+		}
+
+		const grouped = new Map<PaymentGroupKey, PaymentMethod[]>(
+			PAYMENT_GROUPS.map((group) => [group.key, []]),
+		);
+
+		paymentMethods.forEach((method) => {
+			grouped.get(groupPaymentMethod(method))?.push(method);
+		});
+
+		list.innerHTML = '';
+		let optionIndex = 0;
+
+		PAYMENT_GROUPS.forEach((group) => {
+			const methods = grouped.get(group.key) ?? [];
+			if (!methods.length) return;
+
+			const groupNode = groupTpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
+			const title = groupNode.querySelector('[data-pm-group-title]');
+			const count = groupNode.querySelector('[data-pm-group-count]');
+			const items = groupNode.querySelector('[data-pm-group-items]');
+
+			groupNode.dataset.pmGroupKey = group.key;
+			if (title instanceof HTMLElement) title.textContent = group.title;
+			if (count instanceof HTMLElement) count.textContent = `${methods.length} metode`;
+
+			methods.forEach((method) => {
+				const itemNode = itemTpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
+				bind(itemNode, { name: method.name, image: method.image ?? '' });
+
+				const radio = itemNode.querySelector('[data-pm-radio]');
+				if (radio instanceof HTMLInputElement) {
+					radio.value = String(method.id);
+					radio.checked = optionIndex === 0;
+					radio.required = optionIndex === 0;
+				}
+
+				const img = itemNode.querySelector('[data-pm-image]');
+				if (img instanceof HTMLImageElement && method.image) img.classList.remove('hidden');
+				else if (img) img.remove();
+
+				items?.appendChild(itemNode);
+				optionIndex++;
+			});
+
+			list.appendChild(groupNode);
+		});
+	};
+
+	const updateCheckoutSoldOutState = (soldOut: boolean) => {
+		const notice = document.querySelector('[data-sold-out-notice]');
+		if (notice instanceof HTMLElement) notice.classList.toggle('hidden', !soldOut);
+
+		document.querySelectorAll('[data-qty-minus], [data-qty-plus]').forEach((button) => {
+			if (button instanceof HTMLButtonElement) button.disabled = soldOut || button.disabled;
+		});
+
+		const submitBtn = document.querySelector('[data-checkout-submit]');
+		if (submitBtn instanceof HTMLButtonElement) {
+			submitBtn.disabled = soldOut;
+			submitBtn.setAttribute('aria-disabled', soldOut ? 'true' : 'false');
+			if (soldOut) {
+				submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]" data-icon="block">block</span> Sold Out';
+			}
+		}
+	};
+
+	// Setup interaksi checkout (harga, submit) — dijalankan SETELAH data dirender.
+	const setupCheckout = () => {
+		const form = document.querySelector('[data-checkout-form]');
+		if (!(form instanceof HTMLFormElement) || form.dataset.checkoutReady === 'true') return;
+		form.dataset.checkoutReady = 'true';
+
+		const stickyTotal = document.querySelector('[data-sticky-total]');
+		const priceSubtotal = document.querySelector('[data-price-subtotal]');
+		const priceTotal = document.querySelector('[data-price-total]');
+		const priceQtyBadge = document.querySelector('[data-price-qty-badge]');
+
+		interface TicketData { name: string; priceLabel: string; priceRaw: number }
+		const ticketData: TicketData[] = JSON.parse(form.dataset.tickets ?? '[]');
+		const backendUrl = (form.dataset.backendUrl ?? '').replace(/\/$/, '');
+		const snapUrl = form.dataset.snapUrl ?? '';
+		const snapClientKey = form.dataset.snapClientKey ?? '';
+
+		let currentTicketIndex = 0;
+		let currentQty = 1;
+		let appliedDiscountPerTicket = 0;
+		let appliedVoucherCode = '';
+
+		const fmt = (n: number) =>
+			new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+
+		const updatePriceDisplay = () => {
+			const ticket = ticketData[currentTicketIndex];
+			if (!ticket) return;
+			const perTicket = ticket.priceRaw;
+			const total = Math.max(0, perTicket * currentQty - appliedDiscountPerTicket * currentQty);
+			const totalLabel = perTicket ? fmt(total) : ticket.priceLabel;
+			if (stickyTotal instanceof HTMLElement) stickyTotal.textContent = totalLabel;
+			if (priceSubtotal instanceof HTMLElement) priceSubtotal.textContent = perTicket ? fmt(perTicket) : ticket.priceLabel;
+			if (priceTotal instanceof HTMLElement) priceTotal.textContent = totalLabel;
+			if (priceQtyBadge instanceof HTMLElement) priceQtyBadge.textContent = `×${currentQty}`;
+		};
+
+		document.addEventListener('checkout:qty-change', (e) => {
+			currentQty = (e as CustomEvent<{ qty: number }>).detail.qty;
+			updatePriceDisplay();
+		});
+
+		document.addEventListener('checkout:voucher-applied', (e) => {
+			const d = (e as CustomEvent<{ discount_per_ticket: number; code: string }>).detail;
+			appliedDiscountPerTicket = d.discount_per_ticket;
+			appliedVoucherCode = d.code;
+			updatePriceDisplay();
+		});
+
+		updatePriceDisplay();
+
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const submitBtn = document.querySelector('[data-checkout-submit]');
+			const resetBtn = () => {
+				if (form.dataset.soldOut === 'true') return;
+				if (submitBtn instanceof HTMLButtonElement) {
+					submitBtn.disabled = false;
+					submitBtn.removeAttribute('aria-busy');
+					submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]" data-icon="payment">payment</span> Lanjut Bayar';
+				}
+			};
+
+			if (form.dataset.soldOut === 'true') {
+				alert('Event ini sudah Sold Out. Checkout tidak tersedia.');
+				updateCheckoutSoldOutState(true);
+				return;
+			}
+
+			// Collect attendees
+			const pengunjung: Array<{ name: string; email: string; telepon: string }> = [];
+			let idx = 0;
+			while (idx < 3) {
+				const nameEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][name]"]`);
+				const emailEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][email]"]`);
+				const telEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][phone]"]`);
+				if (!nameEl?.value) break;
+				pengunjung.push({ name: nameEl.value, email: emailEl?.value ?? '', telepon: telEl?.value ?? '' });
+				idx++;
+			}
+
+			const paymentMethodId = parseInt(
+				form.querySelector<HTMLInputElement>('[name="payment_method_id"]:checked')?.value ?? '0', 10
+			);
+
+			const invalidAttendeeField = Array.from(form.querySelectorAll<HTMLElement>('[data-attendee-block]'))
+				.filter((block) => Number(block.dataset.attendeeIndex) <= currentQty)
+				.flatMap((block) => Array.from(block.querySelectorAll<HTMLInputElement>('[data-attendee-field]')))
+				.find((field) => !field.checkValidity());
+
+			if (invalidAttendeeField || pengunjung.length < currentQty) {
+				alert('Lengkapi data volunteer terlebih dahulu.');
+				document.dispatchEvent(new CustomEvent('checkout:open-modal', { detail: { name: 'volunteer' } }));
+				window.setTimeout(() => invalidAttendeeField?.reportValidity(), 100);
+				return;
+			}
+			if (!paymentMethodId) {
+				alert('Pilih metode pembayaran terlebih dahulu.');
+				document.dispatchEvent(new CustomEvent('checkout:open-modal', { detail: { name: 'payment' } }));
+				return;
+			}
+
+			if (submitBtn instanceof HTMLButtonElement) {
+				submitBtn.disabled = true;
+				submitBtn.setAttribute('aria-busy', 'true');
+				submitBtn.innerHTML = '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span><span>Memproses...</span>';
+			}
+
+			const body = {
+				event_slug: form.dataset.eventSlug ?? '',
+				jumlah_tiket: currentQty,
+				payment_method_id: paymentMethodId,
+				...(appliedVoucherCode ? { voucher_code: appliedVoucherCode } : {}),
+				pengunjung,
+			};
+
+			try {
+				const res = await fetch(`${backendUrl}/api/checkout`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+					body: JSON.stringify(body),
+				});
+				const data = await res.json() as { success?: boolean; order_id?: string; access_token?: string; snap_token?: string; payment_channel?: string | null; message?: string };
+
+				if (!res.ok || !data.success) { alert(data.message ?? 'Checkout gagal. Coba lagi.'); resetBtn(); return; }
+
+				const { order_id, access_token, snap_token, payment_channel } = data;
+
+				if (!order_id) { alert('Gagal mendapatkan nomor pesanan.'); resetBtn(); return; }
+				if (!access_token) { alert('Gagal mendapatkan akses pembayaran. Silakan coba lagi.'); resetBtn(); return; }
+
+				// Channel custom (VA/QRIS/e-wallet) → tampilan instruksi bayar sendiri, bukan modal Midtrans.
+				if (payment_channel) {
+					window.location.href = paymentUrl('/payment', order_id, access_token);
+					return;
+				}
+
+				// Fallback: kartu kredit / channel tanpa instruksi custom → tetap pakai Snap popup.
+				if (!snap_token) { alert('Gagal mendapatkan token pembayaran.'); resetBtn(); return; }
+
+				await loadSnap(snapUrl, snapClientKey);
+				window.snap.pay(snap_token, {
+					onSuccess:  () => { window.location.href = paymentUrl('/payment/success', order_id); },
+					onPending:  () => { window.location.href = paymentUrl('/payment/pending', order_id, access_token); },
+					onError:    () => { window.location.href = paymentUrl('/payment/failed', order_id, access_token); },
+					onClose:    () => { resetBtn(); },
+				});
+			} catch {
+				alert('Terjadi kesalahan jaringan. Coba lagi.');
+				resetBtn();
+			}
+		});
+	};
+
+	// Ambil data event + metode pembayaran, render, lalu init checkout.
+	const load = async () => {
+		const form = document.querySelector('[data-checkout-form]');
+		if (!(form instanceof HTMLFormElement)) return;
+
+		const slug = queryParam('slug');
+		if (!slug) { window.location.replace('/events'); return; }
+
+		try {
+			const [eventRes, pmRes] = await Promise.all([
+				api.events.show(slug),
+				api.paymentMethods.list(),
+			]);
+			const event = mapToEventDetail(eventRes.data);
+			const eventId = eventRes.data.id;
+			const paymentMethods = pmRes.data;
+
+			document.title = `Checkout – ${event.title} | Zillenial Action`;
+
+			// Isi field statis
+			bind(document, {
+				backHref: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
+			});
+
+			renderPaymentMethods(paymentMethods);
+			document.dispatchEvent(new CustomEvent('checkout:payment-methods-rendered'));
+
+			// Isi dataset form untuk skrip harga & submit
+			form.dataset.eventSlug = event.slug;
+			form.dataset.eventId = String(eventId);
+			form.dataset.tickets = JSON.stringify(
+				event.tickets.map((t) => ({ name: t.name, priceLabel: t.priceLabel, priceRaw: t.priceRaw ?? 0 })),
+			);
+			form.dataset.soldOut = event.isSoldOut ? 'true' : 'false';
+
+			setupCheckout();
+			updateCheckoutSoldOutState(event.isSoldOut === true);
+		} catch {
+			window.location.replace('/events');
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
+</script>

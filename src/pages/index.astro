@@ -1,0 +1,18 @@
+---
+import EventRecommendations from '../components/home/EventRecommendations.astro';
+import HeroSection from '../components/home/HeroSection.astro';
+import EventListPreview from '../components/home/EventListPreview.astro';
+import SponsorGrid from '../components/home/SponsorGrid.astro';
+import Layout from '../layouts/Layout.astro';
+import Footer from '../components/home/Footer.astro';
+---
+
+<Layout title="Social Trip Zillenial Action">
+	<HeroSection />
+	<main class="px-gutter space-y-xl pt-0" data-reveal-scope>
+		<EventRecommendations />
+		<EventListPreview />
+		<SponsorGrid />
+		<Footer />
+	</main>
+</Layout>

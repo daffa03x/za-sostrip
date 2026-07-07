@@ -1,0 +1,86 @@
+---
+import EventCard from './EventCard.astro';
+import LoadingState from '../ui/LoadingState.astro';
+---
+
+<section class="relative z-20 -mt-[165px]" data-event-carousel data-reveal-scope>
+	<div class="flex justify-between items-center mb-md animate-reveal delay-200">
+		<h2 class="font-headline-md text-headline-md text-white">Rekomendasi Social Trip</h2>
+		<div class="flex gap-sm">
+			<button
+				class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:bg-primary-container hover:text-on-primary transition-colors active:scale-90 disabled:opacity-40 disabled:pointer-events-none"
+				type="button"
+				aria-label="Event sebelumnya"
+				aria-controls="event-recommendations-list"
+				data-event-scroll="previous"
+			>
+				<span class="material-symbols-outlined text-[20px]" data-icon="chevron_left">chevron_left</span>
+			</button>
+			<button
+				class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:bg-primary-container hover:text-on-primary transition-colors active:scale-90 disabled:opacity-40 disabled:pointer-events-none"
+				type="button"
+				aria-label="Event berikutnya"
+				aria-controls="event-recommendations-list"
+				data-event-scroll="next"
+			>
+				<span class="material-symbols-outlined text-[20px]" data-icon="chevron_right">chevron_right</span>
+			</button>
+		</div>
+	</div>
+	<div
+		id="event-recommendations-list"
+		class="flex overflow-x-auto gap-md no-scrollbar pb-sm -mx-gutter px-gutter animate-reveal delay-300 snap-x snap-mandatory scroll-px-gutter touch-pan-x cursor-grab select-none"
+		role="list"
+		aria-label="Daftar rekomendasi event"
+		data-rec-list
+	>
+		<LoadingState label="Memuat Social Trip..." variant="dark" size="sm" class="min-w-full py-lg" />
+	</div>
+
+	<template data-rec-tpl>
+		<EventCard title="" date="" location="" image="" imageAlt="" href="#" status="" />
+	</template>
+</section>
+
+<script>
+	import { api } from '../../lib/api';
+	import { mapListItemToEventDetail } from '../../lib/mappers';
+	import { renderList } from '../../lib/csr';
+
+	const recommendationLimit = 6;
+
+	const load = async () => {
+		const list = document.querySelector('[data-rec-list]');
+		if (!(list instanceof HTMLElement) || list.dataset.recReady === 'true') return;
+		list.dataset.recReady = 'true';
+
+		try {
+			const res = await api.events.list({ per_page: recommendationLimit });
+			const events = res.data.slice(0, recommendationLimit).map(mapListItemToEventDetail);
+
+			if (events.length === 0) {
+				list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada Social Trip tersedia.</p>';
+				return;
+			}
+
+			renderList(
+				'[data-rec-list]',
+				'[data-rec-tpl]',
+				events.map((event) => ({
+					title: event.title,
+					date: event.date,
+					location: event.location,
+					image: event.image,
+					imageAlt: event.imageAlt,
+					status: event.status,
+					href: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
+				})),
+			);
+		} catch {
+			list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada Social Trip tersedia.</p>';
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
+</script>

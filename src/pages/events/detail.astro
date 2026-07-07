@@ -1,0 +1,114 @@
+---
+import EventAgenda from '../../components/event-detail/EventAgenda.astro';
+import EventDetailHero from '../../components/event-detail/EventDetailHero.astro';
+import EventHighlights from '../../components/event-detail/EventHighlights.astro';
+import EventLocationNote from '../../components/event-detail/EventLocationNote.astro';
+import EventStickyCTA from '../../components/event-detail/EventStickyCTA.astro';
+import EventSummaryCard from '../../components/event-detail/EventSummaryCard.astro';
+import EventTickets from '../../components/event-detail/EventTickets.astro';
+import Layout from '../../layouts/Layout.astro';
+import type { EventDetail } from '../../data/events';
+
+// Kerangka placeholder; data asli diisi di browser berdasarkan ?slug.
+const skeleton: EventDetail = {
+	slug: '', title: 'Memuat…', date: '—', location: '—', venue: '—', category: '—',
+	status: '—', image: '', imageAlt: '', summary: '', impactNote: '', stats: [],
+	highlights: [], tickets: [], agenda: [], notes: [], directionUrl: '', isSoldOut: false,
+};
+---
+
+<Layout title="Detail Event | Zillenial Action">
+	<EventDetailHero event={skeleton} />
+	<main class="relative z-20 -mt-10 space-y-lg px-gutter pb-28">
+		<EventSummaryCard event={skeleton} />
+		<EventHighlights event={skeleton} />
+		<EventTickets event={skeleton} />
+		<EventAgenda event={skeleton} />
+		<EventLocationNote event={skeleton} />
+	</main>
+	<EventStickyCTA event={skeleton} />
+</Layout>
+
+<script>
+	import { api } from '../../lib/api';
+	import { mapToEventDetail } from '../../lib/mappers';
+	import { bind, renderList, queryParam } from '../../lib/csr';
+
+	const load = async () => {
+		const slug = queryParam('slug');
+		if (!slug) { window.location.replace('/events'); return; }
+
+		try {
+			const res = await api.events.show(slug);
+			const event = mapToEventDetail(res.data);
+
+			document.title = `${event.title} - Zillenial Action`;
+
+			bind(document, {
+				title: event.title,
+				category: event.category,
+				status: event.status,
+				image: event.image,
+				imageAlt: event.imageAlt,
+				date: event.date,
+				location: event.location,
+				summary: event.summary,
+				venue: event.venue,
+				directionUrl: event.directionUrl ?? '',
+				impactNote: event.impactNote,
+				price: event.tickets[0]?.priceLabel ?? 'Info menyusul',
+				href: `/checkout/detail?slug=${encodeURIComponent(event.slug)}`,
+				ctaLabel: event.isSoldOut ? 'Sold Out' : 'Daftar Sekarang',
+			});
+
+			const detailCta = document.querySelector('[data-detail-cta]');
+			if (detailCta instanceof HTMLAnchorElement) {
+				if (event.isSoldOut) {
+					detailCta.classList.add('pointer-events-none', 'opacity-60');
+					detailCta.setAttribute('aria-disabled', 'true');
+					detailCta.setAttribute('tabindex', '-1');
+					detailCta.removeAttribute('href');
+				} else {
+					detailCta.classList.remove('pointer-events-none', 'opacity-60');
+					detailCta.setAttribute('aria-disabled', 'false');
+					detailCta.removeAttribute('tabindex');
+				}
+			}
+
+			const directionLink = document.querySelector('[data-direction-link]');
+			if (directionLink instanceof HTMLAnchorElement) {
+				const hasDirection = Boolean(event.directionUrl);
+				directionLink.classList.toggle('hidden', !hasDirection);
+				directionLink.setAttribute('aria-hidden', hasDirection ? 'false' : 'true');
+			}
+
+			const impactNote = document.querySelector('[data-impact-note]');
+			if (impactNote instanceof HTMLElement) {
+				impactNote.classList.toggle('hidden', !event.impactNote);
+			}
+
+			renderList('[data-tickets-list]', '[data-tickets-tpl]', event.tickets.map((t) => ({
+				name: t.name, description: t.description, status: t.status, priceLabel: t.priceLabel,
+			})));
+
+			const highlightsSection = document.querySelector('[data-highlights-section]');
+			highlightsSection?.classList.toggle('hidden', event.highlights.length === 0);
+			renderList('[data-highlights-list]', '[data-highlights-tpl]', event.highlights.map((text) => ({ text })));
+
+			const agendaSection = document.querySelector('[data-agenda-section]');
+			agendaSection?.classList.toggle('hidden', event.agenda.length === 0);
+			renderList('[data-agenda-list]', '[data-agenda-tpl]', event.agenda.map((item) => ({
+				timeLabel: item.timeLabel,
+				title: item.title,
+				description: item.description,
+			})));
+
+			renderList('[data-notes-list]', '[data-notes-tpl]', event.notes.map((text) => ({ text })));
+		} catch {
+			window.location.replace('/events');
+		}
+	};
+
+	load();
+	document.addEventListener('astro:page-load', load);
+</script>

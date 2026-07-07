@@ -1,0 +1,694 @@
+---
+import LoadingState from '../components/ui/LoadingState.astro';
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Pembayaran | Zillenial Action">
+	<!-- Header -->
+	<header class="px-gutter pb-sm pt-14">
+		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" id="page-title">Pembayaran</h1>
+		<p class="mt-xs text-body-sm text-on-surface-variant" id="page-subtitle">Selesaikan pembayaran sebelum waktu habis.</p>
+	</header>
+
+	<div class="space-y-lg px-gutter pb-10">
+		<!-- Timer -->
+		<div
+			class="flex items-center justify-between rounded-2xl border border-warning/30 bg-warning-container/30 px-md py-sm"
+			id="payment-timer-section"
+		>
+			<div class="flex items-center gap-sm">
+				<span class="material-symbols-outlined text-[20px] text-warning">timer</span>
+				<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Batas pembayaran</span>
+			</div>
+			<span class="font-mono text-base font-black text-warning" id="countdown-display">23:59:59</span>
+		</div>
+
+		<!-- Payment instruction area – rendered by JS based on payment_method param -->
+		<section id="payment-instruction-section" class="hidden">
+			<!-- VA instructions -->
+			<div id="va-instruction" class="hidden space-y-md">
+				<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+					<p class="mb-xs text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+						Nomor Virtual Account <span id="va-bank-label" class="text-primary"></span>
+					</p>
+					<div class="flex items-center justify-between gap-sm">
+						<span class="font-mono text-2xl font-black tracking-widest text-on-surface" id="va-number">—</span>
+						<button
+							class="flex shrink-0 items-center gap-xs rounded-xl bg-primary-container px-sm py-xs text-xs font-black text-primary transition-all active:scale-95"
+							type="button"
+							id="copy-va-btn"
+							aria-label="Salin nomor VA"
+						>
+							<span class="material-symbols-outlined text-[16px]">content_copy</span>
+							Salin
+						</button>
+					</div>
+					<div class="mt-sm flex items-center justify-between border-t border-outline-variant/20 pt-sm">
+						<span class="text-sm text-on-surface-variant">Total pembayaran</span>
+						<span class="text-base font-black text-primary" id="va-total">—</span>
+					</div>
+				</div>
+
+				<div class="rounded-2xl border border-error/20 bg-error-container/10 p-sm">
+					<div class="flex gap-xs">
+						<span class="material-symbols-outlined mt-0.5 shrink-0 text-[16px] text-error">warning</span>
+						<p class="text-body-sm text-on-surface-variant">
+							Pastikan nominal transfer <strong>sama persis</strong> dengan total di atas. Transaksi otomatis terverifikasi.
+						</p>
+					</div>
+				</div>
+
+				<!-- How to pay accordion -->
+				<div>
+					<h2 class="mb-sm font-headline-sm text-headline-sm text-on-background">Cara pembayaran</h2>
+					<div class="space-y-sm" id="va-how-to"></div>
+				</div>
+			</div>
+
+			<!-- E-Wallet instructions -->
+			<div id="ew-instruction" class="hidden space-y-md">
+				<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+					<p class="mb-xs text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+						Bayar via <span id="ew-name-label" class="text-primary"></span>
+					</p>
+					<div class="mt-sm flex items-center justify-between border-t border-outline-variant/20 pt-sm">
+						<span class="text-sm text-on-surface-variant">Total pembayaran</span>
+						<span class="text-base font-black text-primary" id="ew-total">—</span>
+					</div>
+				</div>
+				<button
+					class="flex w-full items-center justify-center gap-sm rounded-2xl bg-primary px-lg py-md text-sm font-black text-on-primary shadow-[0_8px_24px_-8px_rgba(125,41,127,0.45)] transition-all active:scale-[0.98]"
+					type="button"
+					id="ew-open-btn"
+				>
+					<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+					Buka Aplikasi
+				</button>
+				<div id="ew-qr-section" class="hidden rounded-2xl border border-outline-variant/40 bg-white p-md text-center shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+					<p class="mb-sm text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Atau scan QR (di desktop)</p>
+					<img id="ew-qr-img" class="mx-auto h-40 w-40 rounded-xl object-contain" alt="QR e-wallet" />
+				</div>
+				<div id="ew-how-to" class="space-y-sm"></div>
+			</div>
+
+			<!-- QRIS instructions -->
+			<div id="qris-instruction" class="hidden space-y-md">
+				<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+					<p class="mb-sm text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Scan QRIS</p>
+					<div id="qris-qr-placeholder" class="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl bg-surface-container-low">
+						<span class="material-symbols-outlined text-[80px] text-on-surface-variant/40">qr_code_2</span>
+					</div>
+					<img id="qris-qr-img" class="mx-auto hidden h-48 w-48 rounded-2xl object-contain" alt="QRIS" />
+					<LoadingState id="qris-qr-caption" label="Memuat QR..." variant="inline" size="sm" class="mt-sm" />
+					<div class="mt-sm flex items-center justify-between border-t border-outline-variant/20 pt-sm">
+						<span class="text-sm text-on-surface-variant">Total pembayaran</span>
+						<span class="text-base font-black text-primary" id="qris-total">—</span>
+					</div>
+				</div>
+				<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+					<p class="mb-sm text-sm font-black text-on-surface">Cara bayar QRIS</p>
+					<ol class="space-y-xs pl-4 text-body-sm text-on-surface-variant" style="list-style: decimal;">
+						<li>Buka aplikasi dompet digital kamu (GoPay, OVO, DANA, ShopeePay, dll).</li>
+						<li>Pilih menu <strong>Scan</strong> atau <strong>QR</strong>.</li>
+						<li>Arahkan kamera ke QR code di atas.</li>
+						<li>Konfirmasi nominal dan selesaikan pembayaran.</li>
+					</ol>
+				</div>
+			</div>
+
+			<!-- Credit card instructions -->
+			<div id="cc-instruction" class="hidden space-y-md">
+				<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+					<p class="mb-xs text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Kartu Kredit / Debit</p>
+					<div class="mt-sm flex items-center justify-between border-t border-outline-variant/20 pt-sm">
+						<span class="text-sm text-on-surface-variant">Total pembayaran</span>
+						<span class="text-base font-black text-primary" id="cc-total">—</span>
+					</div>
+				</div>
+				<button
+					class="flex w-full items-center justify-center gap-sm rounded-2xl bg-primary px-lg py-md text-sm font-black text-on-primary shadow-[0_8px_24px_-8px_rgba(125,41,127,0.45)] transition-all active:scale-[0.98]"
+					type="button"
+					id="cc-pay-btn"
+				>
+					<span class="material-symbols-outlined text-[18px]">credit_card</span>
+					Bayar dengan Kartu
+				</button>
+				<div class="flex gap-sm rounded-xl border border-outline-variant/30 bg-surface-container-low p-sm">
+					<span class="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-primary">shield</span>
+					<p class="text-body-sm text-on-surface-variant">
+						Transaksi kartu diproses aman oleh <strong>Midtrans</strong>. Data kartu tidak disimpan.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- Order Summary -->
+		<section>
+			<h2 class="mb-md font-headline-md text-headline-md text-on-background">Ringkasan pesanan</h2>
+			<div class="rounded-2xl border border-outline-variant/40 bg-white p-md shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">
+				<!-- Skeleton -->
+				<div id="order-skeleton" class="space-y-sm">
+					<div class="flex items-start gap-sm">
+						<div class="h-12 w-12 shrink-0 animate-pulse rounded-xl bg-surface-container"></div>
+						<div class="min-w-0 flex-1 space-y-xs">
+							<div class="h-4 w-3/4 animate-pulse rounded bg-surface-container"></div>
+							<div class="h-3 w-1/2 animate-pulse rounded bg-surface-container"></div>
+						</div>
+					</div>
+					<div class="h-px bg-outline-variant/30"></div>
+					<div class="space-y-xs">
+						<div class="flex justify-between">
+							<div class="h-3 w-1/3 animate-pulse rounded bg-surface-container"></div>
+							<div class="h-3 w-1/4 animate-pulse rounded bg-surface-container"></div>
+						</div>
+					</div>
+				</div>
+				<!-- Real content -->
+				<div id="order-real" class="hidden space-y-sm">
+					<div class="flex items-start gap-sm">
+						<div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface-container-low">
+							<img class="h-full w-full object-cover" id="order-img" src="" alt="" loading="lazy" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<p class="text-sm font-black leading-tight text-on-surface" id="order-title">—</p>
+							<p class="mt-0.5 text-body-sm text-on-surface-variant" id="order-date">—</p>
+						</div>
+					</div>
+					<div class="h-px bg-outline-variant/30"></div>
+					<div class="space-y-xs">
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-on-surface-variant">Tiket</span>
+							<span class="font-bold text-on-surface" id="order-ticket">—</span>
+						</div>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-on-surface-variant">Jumlah</span>
+							<span class="font-bold text-on-surface" id="order-qty">—</span>
+						</div>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-on-surface-variant">Metode bayar</span>
+							<span class="font-bold text-on-surface" id="order-method">—</span>
+						</div>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-on-surface-variant">No. Pesanan</span>
+							<span class="font-mono text-[11px] font-bold text-on-surface-variant" id="order-id">—</span>
+						</div>
+						<div class="h-px bg-outline-variant/20"></div>
+						<div class="flex items-center justify-between">
+							<span class="text-sm font-black text-on-surface">Total</span>
+							<span class="text-base font-black text-primary" id="order-total">—</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Konfirmasi bayar -->
+		<section class="space-y-sm">
+			<button
+				class="flex w-full items-center justify-center gap-sm rounded-2xl bg-primary px-lg py-md text-sm font-black text-on-primary shadow-[0_8px_24px_-8px_rgba(125,41,127,0.45)] transition-all active:scale-[0.98]"
+				type="button"
+				id="confirm-btn"
+			>
+				<span class="material-symbols-outlined text-[18px]">check_circle</span>
+				Saya Sudah Bayar
+			</button>
+			<p class="text-center text-[11px] text-on-surface-variant">
+				Klik setelah menyelesaikan transfer. Pembayaran diverifikasi otomatis.
+			</p>
+		</section>
+	</div>
+</Layout>
+
+<script>
+	// @ts-nocheck
+	import { api } from '../lib/api';
+
+	// ── Helpers ──────────────────────────────────────────────────────────────
+	function el(id) { return document.getElementById(id); }
+	function setTxt(id, val) { var e = el(id); if (e) e.textContent = val; }
+	function escapeHtml(value) {
+		var div = document.createElement('div');
+		div.textContent = String(value);
+		return div.innerHTML;
+	}
+	function formatInstructionStep(step) {
+		return escapeHtml(step)
+			.replace(/&lt;strong&gt;/g, '<strong>')
+			.replace(/&lt;\/strong&gt;/g, '</strong>')
+			.replace(/&amp;rarr;/g, '&rarr;');
+	}
+	var fmt = function (n) {
+		return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+	};
+
+	// ── URL params ────────────────────────────────────────────────────────────
+	var p = new URLSearchParams(window.location.search);
+	var h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+	var orderId = p.get('order_id') || '';
+	var accessToken = h.get('token') || p.get('token') || sessionStorage.getItem('payment_access_token_' + orderId) || '';
+
+	if (!orderId) {
+		window.location.replace('/events');
+	}
+	if (accessToken) {
+		sessionStorage.setItem('payment_access_token_' + orderId, accessToken);
+	}
+
+	function paymentPath(path) {
+		var params = new URLSearchParams({ order_id: orderId });
+		var hash = accessToken ? '#token=' + encodeURIComponent(accessToken) : '';
+		return path + '?' + params.toString() + hash;
+	}
+
+	setTxt('order-id', orderId || 'PENDING');
+
+	// ── Method label map ──────────────────────────────────────────────────────
+	var BANK_NAMES = { bca: 'BCA', bni: 'BNI', bri: 'BRI', mandiri: 'Mandiri', permata: 'Permata', cimb: 'CIMB Niaga' };
+	var CHANNEL_LABELS = {
+		bank_transfer: function (bank) { return (BANK_NAMES[bank] || (bank || '').toUpperCase()) + ' Virtual Account'; },
+		echannel:      function () { return 'Mandiri Bill Payment'; },
+		gopay:         function () { return 'GoPay'; },
+		shopeepay:     function () { return 'ShopeePay'; },
+		qris:          function () { return 'QRIS'; },
+	};
+
+	// ── VA "cara bayar" content (per bank) ─────────────────────────────────────
+	var VA_HOWTO = {
+		bca: [
+			{
+				label: 'ATM BCA',
+				steps: [
+					'Masukkan kartu ATM BCA dan PIN kamu.',
+					'Pilih menu <strong>Transaksi Lainnya</strong> &rarr; <strong>Transfer</strong> &rarr; <strong>Ke Rekening BCA Virtual Account</strong>.',
+					'Masukkan nomor VA di atas lalu tekan <strong>Benar</strong>.',
+					'Periksa detail pembayaran, pastikan nominal sesuai.',
+					'Tekan <strong>Ya</strong> untuk menyelesaikan transaksi.',
+				],
+			},
+			{
+				label: 'BCA Mobile / myBCA',
+				steps: [
+					'Login ke aplikasi BCA Mobile atau myBCA.',
+					'Pilih <strong>m-BCA</strong> &rarr; <strong>m-Transfer</strong> &rarr; <strong>BCA Virtual Account</strong>.',
+					'Masukkan nomor VA di atas.',
+					'Periksa detail dan masukkan PIN m-BCA.',
+					'Transaksi selesai, simpan bukti bayar.',
+				],
+			},
+			{
+				label: 'Internet Banking BCA (KlikBCA)',
+				steps: [
+					'Login ke klikbca.com.',
+					'Pilih <strong>Pembayaran</strong> &rarr; <strong>BCA Virtual Account</strong>.',
+					'Masukkan nomor VA di atas dan klik <strong>Lanjutkan</strong>.',
+					'Periksa detail, masukkan KEYBCA APPLI 1, klik <strong>Kirim</strong>.',
+				],
+			},
+		],
+		bni: [
+			{
+				label: 'ATM BNI',
+				steps: [
+					'Masukkan kartu ATM dan PIN kamu.',
+					'Pilih <strong>Menu Lainnya</strong> &rarr; <strong>Transfer</strong> &rarr; <strong>Ke Rekening BNI</strong>.',
+					'Masukkan nomor VA di atas.',
+					'Masukkan nominal sesuai total tagihan.',
+					'Konfirmasi dan selesaikan transaksi.',
+				],
+			},
+			{
+				label: 'BNI Mobile Banking',
+				steps: [
+					'Login ke BNI Mobile Banking.',
+					'Pilih <strong>Transfer</strong> &rarr; <strong>Virtual Account Billing</strong>.',
+					'Masukkan nomor VA di atas.',
+					'Pilih rekening debit dan konfirmasi.',
+					'Masukkan password transaksi.',
+				],
+			},
+		],
+		bri: [
+			{
+				label: 'ATM BRI',
+				steps: [
+					'Masukkan kartu ATM BRI dan PIN kamu.',
+					'Pilih <strong>Transaksi Lain</strong> &rarr; <strong>Pembayaran</strong> &rarr; <strong>Lainnya</strong> &rarr; <strong>BRIVA</strong>.',
+					'Masukkan nomor VA di atas.',
+					'Konfirmasi nominal dan selesaikan transaksi.',
+				],
+			},
+			{
+				label: 'BRImo (BRI Mobile)',
+				steps: [
+					'Login ke aplikasi BRImo.',
+					'Pilih <strong>BRIVA</strong>.',
+					'Masukkan nomor VA di atas.',
+					'Periksa detail dan masukkan PIN.',
+				],
+			},
+		],
+		mandiri: [
+			{
+				label: 'ATM Mandiri',
+				steps: [
+					'Masukkan kartu ATM Mandiri dan PIN kamu.',
+					'Pilih <strong>Bayar/Beli</strong> &rarr; <strong>Lainnya</strong> &rarr; <strong>Multi Payment</strong>.',
+					'Masukkan kode perusahaan <strong>88908</strong>, lalu nomor VA di atas.',
+					'Konfirmasi detail pembayaran.',
+				],
+			},
+			{
+				label: 'Livin by Mandiri',
+				steps: [
+					'Login ke aplikasi Livin by Mandiri.',
+					'Pilih <strong>Bayar</strong> &rarr; <strong>Multipayment</strong>.',
+					'Cari penyedia layanan, masukkan nomor VA di atas.',
+					'Konfirmasi dan selesaikan pembayaran.',
+				],
+			},
+		],
+		permata: [
+			{
+				label: 'ATM Permata / ATM Bersama',
+				steps: [
+					'Masukkan kartu ATM dan PIN kamu.',
+					'Pilih <strong>Transaksi Lainnya</strong> &rarr; <strong>Pembayaran</strong> &rarr; <strong>Virtual Account</strong>.',
+					'Masukkan nomor VA di atas.',
+					'Konfirmasi detail dan selesaikan transaksi.',
+				],
+			},
+			{
+				label: 'PermataMobile X',
+				steps: [
+					'Login ke PermataMobile X.',
+					'Pilih <strong>Bayar Tagihan</strong> &rarr; <strong>Virtual Account</strong>.',
+					'Masukkan nomor VA di atas dan konfirmasi.',
+				],
+			},
+		],
+		cimb: [
+			{
+				label: 'ATM CIMB Niaga',
+				steps: [
+					'Masukkan kartu ATM CIMB Niaga dan PIN kamu.',
+					'Pilih <strong>Pembayaran</strong> &rarr; <strong>Virtual Account</strong>.',
+					'Masukkan nomor VA di atas.',
+					'Konfirmasi dan selesaikan transaksi.',
+				],
+			},
+			{
+				label: 'OCTO Mobile',
+				steps: [
+					'Login ke OCTO Mobile.',
+					'Pilih <strong>Transfer</strong> &rarr; <strong>Virtual Account</strong>.',
+					'Masukkan nomor VA di atas dan konfirmasi.',
+				],
+			},
+		],
+	};
+
+	var EW_HOWTO = {
+		gopay: [
+			{
+				label: 'Cara bayar GoPay',
+				steps: [
+					'Klik tombol <strong>Buka Aplikasi</strong> di atas atau buka Gojek.',
+					'Konfirmasi pembayaran yang muncul.',
+					'Masukkan PIN GoPay kamu.',
+					'Pembayaran selesai, simpan bukti.',
+				],
+			},
+		],
+		shopeepay: [
+			{
+				label: 'Cara bayar ShopeePay',
+				steps: [
+					'Klik tombol <strong>Buka Aplikasi</strong> atau buka Shopee.',
+					'Pilih <strong>ShopeePay</strong> dan konfirmasi pembayaran.',
+					'Masukkan PIN ShopeePay kamu.',
+				],
+			},
+		],
+	};
+
+	// ── Build accordion item HTML ─────────────────────────────────────────────
+	var accordionCount = 0;
+	function buildAccordion(label, stepsArray) {
+		// Only pass static instruction copy from this file; never pass API data to this HTML builder.
+		accordionCount++;
+		var id = 'acc-' + accordionCount;
+		var stepsHtml = stepsArray.map(function (s, i) {
+			return '<li class="flex gap-sm"><span class="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-black text-primary">' + (i + 1) + '</span><span class="text-body-sm text-on-surface-variant">' + formatInstructionStep(s) + '</span></li>';
+		}).join('');
+		return '<div class="overflow-hidden rounded-2xl border border-outline-variant/40 bg-white shadow-[0_6px_18px_-14px_rgba(80,67,78,0.35)]">'
+			+ '<button class="flex w-full items-center justify-between px-md py-sm text-left" type="button" onclick="toggleAcc(\'' + id + '\')">'
+			+ '<span class="text-sm font-black text-on-surface">' + escapeHtml(label) + '</span>'
+			+ '<span class="material-symbols-outlined text-[20px] text-on-surface-variant transition-transform" id="' + id + '-chevron">expand_more</span>'
+			+ '</button>'
+			+ '<div id="' + id + '" class="hidden px-md pb-md">'
+			+ '<ol class="space-y-sm">' + stepsHtml + '</ol>'
+			+ '</div></div>';
+	}
+
+	function toggleAcc(id) {
+		var panel  = document.getElementById(id);
+		var chev   = document.getElementById(id + '-chevron');
+		if (!panel) return;
+		var isOpen = !panel.classList.contains('hidden');
+		panel.classList.toggle('hidden', isOpen);
+		if (chev) chev.style.transform = isOpen ? '' : 'rotate(180deg)';
+	}
+	window.toggleAcc = toggleAcc;
+
+	// ── Render payment instructions dari data asli backend ────────────────────
+	var instructionSection = el('payment-instruction-section');
+
+	function hasUsableInstructions(channel, instructions) {
+		instructions = instructions || {};
+		if (!channel) return true;
+		if (channel === 'bank_transfer') return Boolean(instructions.bank && instructions.va_number);
+		if (channel === 'echannel') return Boolean(instructions.bill_key && instructions.biller_code);
+		if (channel === 'qris') return Boolean(instructions.qr_url);
+		if (channel === 'gopay' || channel === 'shopeepay') return Boolean(instructions.deeplink_url || instructions.qr_url);
+		return true;
+	}
+
+	function showInstructionError() {
+		setTxt('page-title', 'Instruksi Belum Tersedia');
+		setTxt('page-subtitle', 'Instruksi pembayaran belum tersedia. Silakan ulangi checkout atau hubungi admin.');
+		var timerEl = el('payment-timer-section');
+		if (timerEl) timerEl.classList.add('hidden');
+		if (confirmBtn) {
+			confirmBtn.disabled = true;
+			confirmBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">error</span> Instruksi Belum Tersedia';
+		}
+	}
+
+	function renderInstructions(channel, instructions) {
+		instructions = instructions || {};
+
+		if (channel === 'bank_transfer' || channel === 'echannel') {
+			var bankCode = instructions.bank || '';
+			var vaNumber = instructions.va_number || instructions.bill_key || '—';
+			setTxt('va-bank-label', BANK_NAMES[bankCode] || bankCode.toUpperCase() || 'Mandiri');
+			setTxt('va-number', vaNumber);
+
+			var howToContainer = el('va-how-to');
+			if (howToContainer) howToContainer.innerHTML = '';
+			var steps = VA_HOWTO[bankCode] || [];
+			steps.forEach(function (item) {
+				howToContainer.innerHTML += buildAccordion(item.label, item.steps);
+			});
+			if (steps.length > 0) {
+				var firstPanel  = document.getElementById('acc-1');
+				var firstChevron = document.getElementById('acc-1-chevron');
+				if (firstPanel)  firstPanel.classList.remove('hidden');
+				if (firstChevron) firstChevron.style.transform = 'rotate(180deg)';
+			}
+
+			el('va-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+
+			var copyBtn = el('copy-va-btn');
+			if (copyBtn) {
+				copyBtn.addEventListener('click', function () {
+					var raw = vaNumber.replace(/\s/g, '');
+					if (navigator.clipboard) {
+						navigator.clipboard.writeText(raw).then(function () {
+							copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> Tersalin!';
+							setTimeout(function () {
+								copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">content_copy</span> Salin';
+							}, 2000);
+						});
+					} else {
+						copyBtn.textContent = raw;
+					}
+				});
+			}
+
+		} else if (channel === 'gopay' || channel === 'shopeepay') {
+			setTxt('ew-name-label', CHANNEL_LABELS[channel]());
+
+			if (instructions.deeplink_url) {
+				var ewBtn = el('ew-open-btn');
+				if (ewBtn) {
+					ewBtn.addEventListener('click', function () {
+						window.location.href = instructions.deeplink_url;
+					});
+				}
+			}
+			if (instructions.qr_url) {
+				var ewQrImg = el('ew-qr-img');
+				var ewQrSection = el('ew-qr-section');
+				if (ewQrImg) ewQrImg.src = instructions.qr_url;
+				if (ewQrSection) ewQrSection.classList.remove('hidden');
+			}
+
+			var ewHowTo = el('ew-how-to');
+			if (ewHowTo) ewHowTo.innerHTML = '';
+			var ewSteps = EW_HOWTO[channel] || [];
+			ewSteps.forEach(function (item) {
+				ewHowTo.innerHTML += buildAccordion(item.label, item.steps);
+			});
+			if (ewSteps.length > 0) {
+				var ep = document.getElementById('acc-1');
+				var ec = document.getElementById('acc-1-chevron');
+				if (ep) ep.classList.remove('hidden');
+				if (ec) ec.style.transform = 'rotate(180deg)';
+			}
+
+			el('ew-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+
+		} else if (channel === 'qris') {
+			if (instructions.qr_url) {
+				var qrImg = el('qris-qr-img');
+				var qrPlaceholder = el('qris-qr-placeholder');
+				if (qrImg) { qrImg.src = instructions.qr_url; qrImg.classList.remove('hidden'); }
+				if (qrPlaceholder) qrPlaceholder.classList.add('hidden');
+				setTxt('qris-qr-caption', 'Scan dengan aplikasi e-wallet atau mobile banking kamu.');
+				var qrCaption = el('qris-qr-caption');
+				if (qrCaption) qrCaption.setAttribute('aria-busy', 'false');
+			}
+			el('qris-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+
+		} else {
+			// Kartu kredit / channel tanpa instruksi custom — seharusnya tidak sampai di sini
+			// karena checkout sudah redirect ke Snap popup untuk channel ini.
+			el('cc-instruction').classList.remove('hidden');
+			instructionSection.classList.remove('hidden');
+		}
+	}
+
+	// ── Countdown berbasis expiry_time dari Midtrans (fallback 24 jam) ────────
+	function startCountdown(expiryTime) {
+		var deadline = expiryTime ? new Date(expiryTime.replace(' ', 'T')).getTime() : NaN;
+		if (!deadline || isNaN(deadline)) deadline = Date.now() + 24 * 60 * 60 * 1000;
+
+		var cdEl    = el('countdown-display');
+		var timerEl = el('payment-timer-section');
+		var countdownIv = null;
+
+		function tick() {
+			var rem = deadline - Date.now();
+			if (rem <= 0) {
+				if (cdEl) cdEl.textContent = '00:00:00';
+				if (timerEl) {
+					timerEl.className = timerEl.className
+						.replace('border-warning/30', 'border-error/30')
+						.replace('bg-warning-container/30', 'bg-error-container/20');
+				}
+				clearInterval(countdownIv);
+				return;
+			}
+			var h = Math.floor(rem / 3600000).toString().padStart(2, '0');
+			var m = Math.floor((rem % 3600000) / 60000).toString().padStart(2, '0');
+			var s = Math.floor((rem % 60000) / 1000).toString().padStart(2, '0');
+			if (cdEl) cdEl.textContent = h + ':' + m + ':' + s;
+		}
+		tick();
+		countdownIv = setInterval(tick, 1000);
+	}
+
+	// ── Status polling — backend diupdate oleh webhook Midtrans ───────────────
+	var pollIv = null;
+	function startStatusPolling() {
+		pollIv = setInterval(function () {
+			api.transaksi.status(orderId, accessToken).then(function (res) {
+				var status = res.data.status_pembayaran;
+				if (status === 'Success') {
+					clearInterval(pollIv);
+					window.location.href = '/payment/success?order_id=' + encodeURIComponent(orderId);
+				} else if (status === 'Failed') {
+					clearInterval(pollIv);
+					window.location.href = paymentPath('/payment/failed');
+				}
+			}).catch(function () { /* abaikan, coba lagi di polling berikutnya */ });
+		}, 5000);
+	}
+
+	// ── Confirm / "sudah bayar" button — nudge manual, konfirmasi nyata dari polling ──
+	var confirmBtn = el('confirm-btn');
+	if (confirmBtn) {
+		confirmBtn.addEventListener('click', function () {
+			confirmBtn.disabled = true;
+			confirmBtn.setAttribute('aria-busy', 'true');
+			confirmBtn.innerHTML = '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span><span>Memeriksa...</span>';
+			api.transaksi.status(orderId, accessToken).then(function (res) {
+				var status = res.data.status_pembayaran;
+				if (status === 'Success') { window.location.href = '/payment/success?order_id=' + encodeURIComponent(orderId); return; }
+				if (status === 'Failed') { window.location.href = paymentPath('/payment/failed'); return; }
+				window.location.href = paymentPath('/payment/pending');
+			}).catch(function () {
+				confirmBtn.disabled = false;
+				confirmBtn.removeAttribute('aria-busy');
+				confirmBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span> Saya Sudah Bayar';
+			});
+		});
+	}
+
+	// ── Load data transaksi asli dari backend ──────────────────────────────────
+	function load() {
+		api.transaksi.status(orderId, accessToken).then(function (res) {
+			var data = res.data;
+
+			setTxt('order-title',  data.event.name);
+			setTxt('order-date',   data.event.waktu_mulai);
+			setTxt('order-ticket', data.event.name);
+			setTxt('order-qty',    data.jumlah_tiket + ' tiket');
+			setTxt('order-total',  fmt(data.total_pembayaran));
+			setTxt('va-total', fmt(data.total_pembayaran));
+			setTxt('ew-total', fmt(data.total_pembayaran));
+			setTxt('qris-total', fmt(data.total_pembayaran));
+			setTxt('cc-total', fmt(data.total_pembayaran));
+
+			var channelLabelFn = CHANNEL_LABELS[data.payment_channel];
+			setTxt('order-method', channelLabelFn ? channelLabelFn((data.payment_instructions || {}).bank) : 'Kartu Kredit / Debit');
+
+			var imgEl = el('order-img');
+			if (imgEl && data.event.image) { imgEl.src = data.event.image; imgEl.alt = data.event.name; }
+
+			var backLink = el('back-link');
+			if (backLink && data.event.slug) backLink.href = '/checkout/' + data.event.slug;
+
+			el('order-skeleton').classList.add('hidden');
+			el('order-real').classList.remove('hidden');
+
+			if (data.status_pembayaran === 'Success') { window.location.href = '/payment/success?order_id=' + encodeURIComponent(orderId); return; }
+			if (data.status_pembayaran === 'Failed') { window.location.href = paymentPath('/payment/failed'); return; }
+
+			if (!hasUsableInstructions(data.payment_channel, data.payment_instructions)) {
+				showInstructionError();
+				return;
+			}
+			renderInstructions(data.payment_channel, data.payment_instructions);
+			startCountdown((data.payment_instructions || {}).expiry_time);
+			startStatusPolling();
+		}).catch(function () {
+			window.location.replace('/events');
+		});
+	}
+
+	if (orderId) load();
+</script>

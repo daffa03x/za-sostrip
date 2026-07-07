@@ -1,0 +1,39 @@
+---
+import type { EventDetail } from '../../data/events';
+
+interface Props {
+	event: EventDetail;
+}
+
+const { event } = Astro.props;
+const isSoldOut = event.isSoldOut === true;
+const ctaHref = isSoldOut ? '#' : `/checkout/detail?slug=${event.slug}`;
+const ctaLabel = isSoldOut ? 'Sold Out' : 'Daftar Sekarang';
+---
+
+<div
+	class="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] px-gutter pb-[calc(12px+env(safe-area-inset-bottom))] pt-sm"
+	data-sticky-cta
+>
+	<div class="rounded-2xl border border-outline-variant/30 bg-white p-sm shadow-[0_8px_24px_-18px_rgba(80,67,78,0.55)]">
+		<div class="flex items-center justify-between gap-sm">
+			<div>
+				<p class="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Mulai dari</p>
+				<p class="text-sm font-black leading-tight text-primary" data-bind="price">{event.tickets[0]?.priceLabel ?? 'Info menyusul'}</p>
+			</div>
+			<a
+				class:list={[
+					'cta-glow flex min-h-11 flex-1 items-center justify-center rounded-full bg-primary px-md text-sm font-black text-white shadow-[0_10px_20px_-12px_rgba(125,41,127,0.9)] transition-all active:scale-[0.98]',
+					isSoldOut && 'pointer-events-none opacity-60',
+				]}
+				href={ctaHref}
+				data-bind-href="href"
+				data-detail-cta
+				aria-disabled={isSoldOut ? 'true' : 'false'}
+				aria-label={`${ctaLabel} untuk ${event.title}`}
+			>
+				<span data-bind="ctaLabel">{ctaLabel}</span>
+			</a>
+		</div>
+	</div>
+</div>

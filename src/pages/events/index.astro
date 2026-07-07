@@ -1,0 +1,122 @@
+---
+import EventListCard from '../../components/event/EventListCard.astro';
+import LoadingState from '../../components/ui/LoadingState.astro';
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Semua Social Trip - Zillenial Action">
+	<header class="px-gutter pb-lg pt-16" data-reveal-scope>
+		<a class="mb-md inline-flex items-center gap-xs text-sm font-bold text-primary" href="/">
+			<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+			Kembali
+		</a>
+		<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background" data-reveal>Semua Social Trip</h1>
+		<p class="mt-xs text-body-sm text-on-surface-variant" data-reveal>Pilih Social Trip yang ingin kamu ikuti.</p>
+		<form method="get" class="mt-md flex gap-xs" data-events-search>
+			<input
+				type="search"
+				name="search"
+				placeholder="Cari Social Trip…"
+				class="flex-1 rounded-xl border border-outline-variant bg-surface-container-low px-sm py-xs text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+				data-search-input
+			/>
+			<button type="submit" class="rounded-xl bg-primary px-md py-xs text-sm font-black text-white">Cari</button>
+		</form>
+	</header>
+
+	<main class="space-y-sm px-gutter pb-32" data-reveal-stagger data-events-list>
+		<LoadingState label="Memuat Social Trip..." class="py-xl" />
+	</main>
+
+	<template data-events-tpl>
+		<EventListCard event={{ slug: '', title: '', date: '', location: '', venue: '', category: '', status: '', image: '', imageAlt: '', summary: '', impactNote: '', stats: [], highlights: [], tickets: [], agenda: [], notes: [] }} />
+	</template>
+
+	<nav class="hidden justify-center gap-sm pb-20 px-gutter" data-events-pagination>
+		<a class="hidden rounded-xl border border-outline-variant px-md py-xs text-sm font-black text-primary" data-page-prev href="#">← Sebelumnya</a>
+		<a class="hidden rounded-xl bg-primary px-md py-xs text-sm font-black text-white" data-page-next href="#">Berikutnya →</a>
+	</nav>
+</Layout>
+
+<script>
+	import { api } from '../../lib/api';
+	import { mapListItemToEventDetail } from '../../lib/mappers';
+	import { renderList, queryParam } from '../../lib/csr';
+
+	const buildHref = (page: number, search: string) => {
+		const qs = new URLSearchParams();
+		if (page > 1) qs.set('page', String(page));
+		if (search) qs.set('search', search);
+		const str = qs.toString();
+		return str ? `/events?${str}` : '/events';
+	};
+
+	const load = async () => {
+		const main = document.querySelector('[data-events-list]');
+		if (!(main instanceof HTMLElement)) return;
+
+		const page = Number(queryParam('page') ?? 1) || 1;
+		const search = queryParam('search') ?? '';
+
+		const searchInput = document.querySelector('[data-search-input]');
+		if (searchInput instanceof HTMLInputElement) searchInput.value = search;
+
+		try {
+			const res = await api.events.list({ page, search: search || undefined, per_page: 12 });
+			const events = res.data.map(mapListItemToEventDetail);
+			const meta = res.meta;
+
+			if (events.length === 0) {
+				main.innerHTML = '<p class="py-xl text-center text-on-surface-variant">Belum ada Social Trip yang tersedia.</p>';
+			} else {
+				renderList(
+					'[data-events-list]',
+					'[data-events-tpl]',
+					events.map((event) => ({
+						href: `/events/detail?slug=${encodeURIComponent(event.slug)}`,
+						image: event.image,
+						imageAlt: event.imageAlt,
+						category: event.category,
+						status: event.status,
+						title: event.title,
+						date: event.date,
+						location: event.location,
+					})),
+				);
+			}
+
+			// Pagination
+			const nav = document.querySelector('[data-events-pagination]');
+			const prev = document.querySelector('[data-page-prev]');
+			const next = document.querySelector('[data-page-next]');
+			if (nav instanceof HTMLElement && prev instanceof HTMLAnchorElement && next instanceof HTMLAnchorElement) {
+				const hasPrev = meta.current_page > 1;
+				const hasNext = meta.current_page < meta.last_page;
+				nav.classList.toggle('hidden', !hasPrev && !hasNext);
+				nav.classList.toggle('flex', hasPrev || hasNext);
+				prev.classList.toggle('hidden', !hasPrev);
+				next.classList.toggle('hidden', !hasNext);
+				prev.href = buildHref(meta.current_page - 1, search);
+				next.href = buildHref(meta.current_page + 1, search);
+			}
+		} catch {
+			main.innerHTML = '<p class="py-xl text-center text-on-surface-variant">Belum ada Social Trip yang tersedia.</p>';
+		}
+	};
+
+	const setupSearch = () => {
+		const form = document.querySelector('[data-events-search]');
+		if (!(form instanceof HTMLFormElement) || form.dataset.searchReady === 'true') return;
+		form.dataset.searchReady = 'true';
+		form.addEventListener('submit', (e) => {
+			e.preventDefault();
+			const input = form.querySelector('[data-search-input]');
+			const value = input instanceof HTMLInputElement ? input.value.trim() : '';
+			window.location.href = buildHref(1, value);
+		});
+	};
+
+	load();
+	setupSearch();
+	document.addEventListener('astro:page-load', () => { load(); setupSearch(); });
+</script>

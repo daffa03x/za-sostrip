@@ -1,0 +1,20 @@
+---
+// import logoZaWhite from '../../../sostrip.png';
+const heroImage = '/header.jpg';
+---
+
+<section
+	class="relative text-on-primary overflow-hidden rounded-b-[40px] px-gutter pt-16 pb-[170px] before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/60 before:to-transparent before:z-0"
+	style={`background-image: url("${heroImage}"); background-size: cover; background-position: center center;`}
+	data-reveal="fade"
+>
+	<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(circle at 100% 0%, rgba(255,255,255,0.4) 0%, transparent 50%), radial-gradient(circle at 0% 100%, rgba(255,255,255,0.2) 0%, transparent 50%);"></div>
+	<header class="bg-transparent absolute top-0 left-0 w-full flex justify-between items-center px-gutter z-20 py-sm animate-reveal">
+		<img src="/logo_za.png" alt="Zillenial Action" class="h-20 w-auto object-contain drop-shadow-md" />
+	</header>
+	<div class="relative z-10 animate-reveal delay-100" style="margin-top: 20px;">
+		<h1 class="text-white mb-md font-headline-md text-[16px]">
+			Sobat Zigi, Siap Aksi!
+		</h1>
+	</div>
+</section>
