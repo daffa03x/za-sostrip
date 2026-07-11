@@ -1,0 +1,355 @@
+---
+// Custom toast notification system.
+// Renders nothing on the server; the inline script exposes a global `window.toast`
+// API (info / success / warning / error) with modern, animated, dismissible toasts.
+// Include this once, near the top of <body> in Layout.astro.
+---
+
+<style is:global>
+	.za-toast-container {
+		position: fixed;
+		top: max(16px, env(safe-area-inset-top));
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 9999;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		width: 100%;
+		max-width: 430px;
+		padding: 0 16px;
+		pointer-events: none;
+	}
+
+	.za-toast {
+		--za-accent: #7d297f;
+		--za-tint: #fdf4ff;
+		pointer-events: auto;
+		position: relative;
+		display: flex;
+		align-items: flex-start;
+		gap: 12px;
+		overflow: hidden;
+		padding: 13px 14px;
+		border-radius: 16px;
+		background: #ffffff;
+		border: 1px solid rgba(80, 67, 78, 0.08);
+		box-shadow:
+			0 10px 30px -12px rgba(28, 27, 27, 0.28),
+			0 2px 6px -2px rgba(28, 27, 27, 0.12);
+		will-change: transform, opacity;
+		animation: za-toast-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+	}
+
+	.za-toast--leaving {
+		animation: za-toast-out 0.3s cubic-bezier(0.4, 0, 1, 1) both;
+	}
+
+	.za-toast--success {
+		--za-accent: #15803d;
+		--za-tint: #ecfdf5;
+	}
+
+	.za-toast--error {
+		--za-accent: #ba1a1a;
+		--za-tint: #fef2f2;
+	}
+
+	.za-toast--warning {
+		--za-accent: #b45309;
+		--za-tint: #fffbeb;
+	}
+
+	.za-toast--info {
+		--za-accent: #7d297f;
+		--za-tint: #fdf4ff;
+	}
+
+	.za-toast__icon {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 34px;
+		height: 34px;
+		border-radius: 11px;
+		background: var(--za-tint);
+		color: var(--za-accent);
+	}
+
+	.za-toast__icon .material-symbols-outlined {
+		font-size: 21px;
+		font-variation-settings: 'FILL' 1, 'wght' 500;
+	}
+
+	.za-toast__body {
+		flex: 1 1 auto;
+		min-width: 0;
+		padding-top: 1px;
+	}
+
+	.za-toast__title {
+		margin: 0;
+		font-family: 'Hanken Grotesk', sans-serif;
+		font-size: 14px;
+		font-weight: 700;
+		line-height: 1.25;
+		color: #1c1b1b;
+	}
+
+	.za-toast__message {
+		margin: 2px 0 0;
+		font-family: 'Inter', sans-serif;
+		font-size: 13px;
+		line-height: 1.4;
+		color: #50434e;
+		word-break: break-word;
+	}
+
+	.za-toast__close {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		margin: -2px -2px 0 0;
+		border: 0;
+		border-radius: 8px;
+		background: transparent;
+		color: #82727e;
+		cursor: pointer;
+		transition:
+			background-color 0.15s ease,
+			color 0.15s ease,
+			transform 0.1s ease;
+	}
+
+	.za-toast__close:hover {
+		background: rgba(80, 67, 78, 0.08);
+		color: #1c1b1b;
+	}
+
+	.za-toast__close:active {
+		transform: scale(0.9);
+	}
+
+	.za-toast__close .material-symbols-outlined {
+		font-size: 18px;
+	}
+
+	.za-toast__progress {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		height: 3px;
+		width: 100%;
+		transform-origin: left center;
+		background: var(--za-accent);
+		opacity: 0.55;
+		animation: za-toast-progress linear forwards;
+	}
+
+	@keyframes za-toast-in {
+		from {
+			opacity: 0;
+			transform: translate3d(0, -14px, 0) scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: translate3d(0, 0, 0) scale(1);
+		}
+	}
+
+	@keyframes za-toast-out {
+		from {
+			opacity: 1;
+			transform: translate3d(0, 0, 0) scale(1);
+			max-height: 120px;
+			margin-bottom: 0;
+		}
+		to {
+			opacity: 0;
+			transform: translate3d(0, -12px, 0) scale(0.94);
+			max-height: 0;
+			margin-bottom: -10px;
+		}
+	}
+
+	@keyframes za-toast-progress {
+		from {
+			transform: scaleX(1);
+		}
+		to {
+			transform: scaleX(0);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.za-toast,
+		.za-toast--leaving {
+			animation: none;
+		}
+
+		.za-toast__progress {
+			display: none;
+		}
+	}
+</style>
+
+<script is:inline>
+	(function () {
+		if (window.__zaToastReady) return;
+		window.__zaToastReady = true;
+
+		var CONTAINER_ID = 'za-toast-container';
+		var MAX_VISIBLE = 4;
+		var TYPES = ['success', 'error', 'warning', 'info'];
+		var ICONS = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
+		var DEFAULT_TITLES = { success: 'Berhasil', error: 'Gagal', warning: 'Perhatian', info: 'Info' };
+
+		function prefersReduced() {
+			return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		}
+
+		function ensureContainer() {
+			var container = document.getElementById(CONTAINER_ID);
+			if (!container) {
+				container = document.createElement('div');
+				container.id = CONTAINER_ID;
+				container.className = 'za-toast-container';
+				container.setAttribute('aria-live', 'polite');
+				container.setAttribute('aria-label', 'Notifikasi');
+				document.body.appendChild(container);
+			} else if (container.parentElement !== document.body) {
+				document.body.appendChild(container);
+			}
+			return container;
+		}
+
+		function dismiss(toast) {
+			if (!toast || toast.dataset.leaving === 'true') return;
+			toast.dataset.leaving = 'true';
+			if (toast._timer) {
+				clearTimeout(toast._timer);
+				toast._timer = null;
+			}
+			var remove = function () {
+				if (toast.parentElement) toast.parentElement.removeChild(toast);
+			};
+			if (prefersReduced()) {
+				remove();
+				return;
+			}
+			toast.classList.add('za-toast--leaving');
+			toast.addEventListener('animationend', remove, { once: true });
+			setTimeout(remove, 500);
+		}
+
+		function makeIcon(name) {
+			var span = document.createElement('span');
+			span.className = 'material-symbols-outlined';
+			span.setAttribute('aria-hidden', 'true');
+			span.textContent = name;
+			return span;
+		}
+
+		function show(message, options) {
+			options = options || {};
+			var type = TYPES.indexOf(options.type) !== -1 ? options.type : 'info';
+			var duration = typeof options.duration === 'number' ? options.duration : 4000;
+			var title = options.title != null ? options.title : DEFAULT_TITLES[type];
+			var container = ensureContainer();
+
+			// Cap the stack: drop the oldest when we exceed the limit.
+			while (container.children.length >= MAX_VISIBLE) {
+				dismiss(container.firstElementChild);
+				break;
+			}
+
+			var toast = document.createElement('div');
+			toast.className = 'za-toast za-toast--' + type;
+			toast.setAttribute('role', type === 'error' || type === 'warning' ? 'alert' : 'status');
+
+			var iconWrap = document.createElement('div');
+			iconWrap.className = 'za-toast__icon';
+			iconWrap.appendChild(makeIcon(ICONS[type]));
+
+			var body = document.createElement('div');
+			body.className = 'za-toast__body';
+			if (title) {
+				var titleEl = document.createElement('p');
+				titleEl.className = 'za-toast__title';
+				titleEl.textContent = title;
+				body.appendChild(titleEl);
+			}
+			if (message) {
+				var msgEl = document.createElement('p');
+				msgEl.className = 'za-toast__message';
+				msgEl.textContent = message;
+				body.appendChild(msgEl);
+			}
+
+			var closeBtn = document.createElement('button');
+			closeBtn.type = 'button';
+			closeBtn.className = 'za-toast__close';
+			closeBtn.setAttribute('aria-label', 'Tutup notifikasi');
+			closeBtn.appendChild(makeIcon('close'));
+			closeBtn.addEventListener('click', function () {
+				dismiss(toast);
+			});
+
+			toast.appendChild(iconWrap);
+			toast.appendChild(body);
+			toast.appendChild(closeBtn);
+
+			if (duration > 0) {
+				if (prefersReduced()) {
+					toast._timer = setTimeout(function () {
+						dismiss(toast);
+					}, duration);
+				} else {
+					var progress = document.createElement('div');
+					progress.className = 'za-toast__progress';
+					progress.style.animationDuration = duration + 'ms';
+					progress.addEventListener('animationend', function () {
+						dismiss(toast);
+					});
+					toast.appendChild(progress);
+
+					// Pause countdown while the user hovers/holds the toast.
+					var pause = function () {
+						progress.style.animationPlayState = 'paused';
+					};
+					var resume = function () {
+						progress.style.animationPlayState = 'running';
+					};
+					toast.addEventListener('mouseenter', pause);
+					toast.addEventListener('mouseleave', resume);
+					toast.addEventListener('touchstart', pause, { passive: true });
+					toast.addEventListener('touchend', resume, { passive: true });
+				}
+			}
+
+			container.appendChild(toast);
+			return toast;
+		}
+
+		function withType(type) {
+			return function (message, options) {
+				options = options || {};
+				options.type = type;
+				return show(message, options);
+			};
+		}
+
+		window.toast = {
+			show: show,
+			info: withType('info'),
+			success: withType('success'),
+			warning: withType('warning'),
+			error: withType('error'),
+			dismiss: dismiss,
+		};
+	})();
+</script>

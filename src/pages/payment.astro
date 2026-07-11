@@ -20,7 +20,7 @@ import Layout from '../layouts/Layout.astro';
 				<span class="material-symbols-outlined text-[20px] text-warning">timer</span>
 				<span class="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">Batas pembayaran</span>
 			</div>
-			<span class="font-mono text-base font-black text-warning" id="countdown-display">23:59:59</span>
+			<span class="font-mono text-base font-black text-warning" id="countdown-display">00:15:00</span>
 		</div>
 
 		<!-- Payment instruction area – rendered by JS based on payment_method param -->
@@ -516,12 +516,16 @@ import Layout from '../layouts/Layout.astro';
 					if (navigator.clipboard) {
 						navigator.clipboard.writeText(raw).then(function () {
 							copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> Tersalin!';
+							if (window.toast) window.toast.success('Nomor Virtual Account disalin.', { duration: 2500 });
 							setTimeout(function () {
 								copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">content_copy</span> Salin';
 							}, 2000);
+						}).catch(function () {
+							if (window.toast) window.toast.warning('Gagal menyalin. Salin nomor secara manual.');
 						});
 					} else {
 						copyBtn.textContent = raw;
+						if (window.toast) window.toast.info('Salin nomor Virtual Account secara manual.');
 					}
 				});
 			}
@@ -574,8 +578,7 @@ import Layout from '../layouts/Layout.astro';
 			instructionSection.classList.remove('hidden');
 
 		} else {
-			// Kartu kredit / channel tanpa instruksi custom — seharusnya tidak sampai di sini
-			// karena checkout sudah redirect ke Snap popup untuk channel ini.
+			// Channel tanpa instruksi custom (mis. kartu, jika suatu saat diaktifkan) — fallback tampilan.
 			el('cc-instruction').classList.remove('hidden');
 			instructionSection.classList.remove('hidden');
 		}
@@ -584,7 +587,8 @@ import Layout from '../layouts/Layout.astro';
 	// ── Countdown berbasis expiry_time dari Midtrans (fallback 24 jam) ────────
 	function startCountdown(expiryTime) {
 		var deadline = expiryTime ? new Date(expiryTime.replace(' ', 'T')).getTime() : NaN;
-		if (!deadline || isNaN(deadline)) deadline = Date.now() + 24 * 60 * 60 * 1000;
+		// Fallback bila expiry_time tak ada: samakan dengan kebijakan 15 menit.
+		if (!deadline || isNaN(deadline)) deadline = Date.now() + 15 * 60 * 1000;
 
 		var cdEl    = el('countdown-display');
 		var timerEl = el('payment-timer-section');

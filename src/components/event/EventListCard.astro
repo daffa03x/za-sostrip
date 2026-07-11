@@ -16,7 +16,7 @@ const { event } = Astro.props;
 	data-event-list-card
 	data-reveal
 >
-	<div class="relative h-[104px] w-[104px] shrink-0 overflow-hidden rounded-xl bg-surface-container-low">
+	<div class="relative aspect-[4/5] w-[104px] shrink-0 overflow-hidden rounded-xl bg-surface-container-low">
 		<img alt={event.imageAlt} data-bind-alt="imageAlt" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={event.image} data-bind-src="image" draggable="false" />
 	</div>
 	<div class="min-w-0 flex-1 py-1">

@@ -48,6 +48,42 @@ import LoadingState from '../ui/LoadingState.astro';
 	import { renderList } from '../../lib/csr';
 
 	const recommendationLimit = 6;
+	// Ambil lebih banyak dari limit karena sebagian akan tersaring (non-aktif / stok habis).
+	const recommendationPool = 50;
+
+	// Rekomendasi hanya event yang statusnya masih aktif (Y) DAN tiketnya belum 0.
+	// Backend sudah menyediakan `is_sold_out` = (!aktif || stok<=0); saring yang belum sold out.
+	const isRecommendable = (event: import('../../lib/api').EventListItem): boolean => {
+		if (typeof event.is_sold_out === 'boolean') return !event.is_sold_out;
+		const active = event.status === true || event.status === 1 ||
+			(typeof event.status === 'string' && ['1', 'y', 'yes', 'true', 'aktif', 'active'].includes(event.status.trim().toLowerCase()));
+		return active && (event.sisa_tiket ?? 0) > 0;
+	};
+
+	// Handler tombol kiri/kanan carousel. Delegasi di document sekali saja agar tetap
+	// bekerja setelah konten dimuat async maupun setelah navigasi Astro (view transitions).
+	const initCarouselControls = () => {
+		if ((window as any).__eventScrollBound === true) return;
+		(window as any).__eventScrollBound = true;
+
+		document.addEventListener('click', (e) => {
+			const target = e.target instanceof Element ? e.target.closest('[data-event-scroll]') : null;
+			if (!target) return;
+
+			const carousel = target.closest('[data-event-carousel]');
+			const list = carousel?.querySelector('[data-rec-list]');
+			if (!(list instanceof HTMLElement)) return;
+
+			const firstCard = list.querySelector(':scope > *');
+			const gap = 16; // gap-md
+			const step = firstCard instanceof HTMLElement
+				? firstCard.getBoundingClientRect().width + gap
+				: 296;
+			const direction = target.getAttribute('data-event-scroll') === 'previous' ? -1 : 1;
+
+			list.scrollBy({ left: direction * step, behavior: 'smooth' });
+		});
+	};
 
 	const load = async () => {
 		const list = document.querySelector('[data-rec-list]');
@@ -55,8 +91,11 @@ import LoadingState from '../ui/LoadingState.astro';
 		list.dataset.recReady = 'true';
 
 		try {
-			const res = await api.events.list({ per_page: recommendationLimit });
-			const events = res.data.slice(0, recommendationLimit).map(mapListItemToEventDetail);
+			const res = await api.events.list({ per_page: recommendationPool });
+			const events = res.data
+				.filter(isRecommendable)
+				.slice(0, recommendationLimit)
+				.map(mapListItemToEventDetail);
 
 			if (events.length === 0) {
 				list.innerHTML = '<p class="text-white/70 text-sm py-lg">Belum ada Social Trip tersedia.</p>';
@@ -81,6 +120,10 @@ import LoadingState from '../ui/LoadingState.astro';
 		}
 	};
 
+	initCarouselControls();
 	load();
-	document.addEventListener('astro:page-load', load);
+	document.addEventListener('astro:page-load', () => {
+		initCarouselControls();
+		load();
+	});
 </script>

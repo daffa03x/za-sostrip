@@ -139,7 +139,7 @@ import LoadingState from '../ui/LoadingState.astro';
 		});
 		document.querySelector('[data-confirm-payment-method]')?.addEventListener('click', () => {
 			if (!document.querySelector('[data-pm-radio]:checked')) {
-				alert('Pilih metode pembayaran terlebih dahulu.');
+				window.toast.warning('Pilih metode pembayaran terlebih dahulu.', { title: 'Metode pembayaran' });
 				return;
 			}
 			closeModal();

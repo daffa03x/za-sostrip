@@ -40,6 +40,11 @@
 		const showMsg = (text: string, ok: boolean) => {
 			msg.textContent = text;
 			msg.className = `mt-xs text-sm ${ok ? 'text-success' : 'text-error'}`;
+			if (ok) {
+				window.toast.success(text, { title: 'Voucher dipakai' });
+			} else {
+				window.toast.warning(text, { title: 'Voucher' });
+			}
 		};
 
 		btn.addEventListener('click', async () => {

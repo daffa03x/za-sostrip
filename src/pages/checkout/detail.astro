@@ -15,8 +15,6 @@ const skeleton: EventDetail = {
 };
 // Env PUBLIC_* di-inline saat build.
 const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
-const snapUrl = import.meta.env.PUBLIC_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
-const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 ---
 
 <Layout title="Checkout | Zillenial Action">
@@ -43,8 +41,6 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		data-event-slug=""
 		data-event-id="0"
 		data-backend-url={backendUrl}
-		data-snap-url={snapUrl}
-		data-snap-client-key={snapClientKey}
 		data-tickets="[]"
 		data-sold-out="false"
 	>
@@ -73,24 +69,6 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 	import type { PaymentMethod } from '../../lib/api';
 	import { mapToEventDetail } from '../../lib/mappers';
 	import { bind, queryParam } from '../../lib/csr';
-
-	declare global {
-		interface Window {
-			snap: { pay: (token: string, options: Record<string, unknown>) => void };
-		}
-	}
-
-	function loadSnap(snapUrl: string, clientKey: string): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (typeof window.snap !== 'undefined') { resolve(); return; }
-			const s = document.createElement('script');
-			s.src = snapUrl;
-			s.setAttribute('data-client-key', clientKey);
-			s.onload = () => resolve();
-			s.onerror = () => reject(new Error('Gagal memuat Snap.js'));
-			document.head.appendChild(s);
-		});
-	}
 
 	const paymentUrl = (path: string, orderId: string, accessToken?: string) => {
 		const params = new URLSearchParams({ order_id: orderId });
@@ -231,8 +209,6 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 		interface TicketData { name: string; priceLabel: string; priceRaw: number }
 		const ticketData: TicketData[] = JSON.parse(form.dataset.tickets ?? '[]');
 		const backendUrl = (form.dataset.backendUrl ?? '').replace(/\/$/, '');
-		const snapUrl = form.dataset.snapUrl ?? '';
-		const snapClientKey = form.dataset.snapClientKey ?? '';
 
 		let currentTicketIndex = 0;
 		let currentQty = 1;
@@ -281,7 +257,7 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 			};
 
 			if (form.dataset.soldOut === 'true') {
-				alert('Event ini sudah Sold Out. Checkout tidak tersedia.');
+				window.toast.warning('Event ini sudah Sold Out. Checkout tidak tersedia.', { title: 'Sold Out' });
 				updateCheckoutSoldOutState(true);
 				return;
 			}
@@ -308,13 +284,13 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 				.find((field) => !field.checkValidity());
 
 			if (invalidAttendeeField || pengunjung.length < currentQty) {
-				alert('Lengkapi data volunteer terlebih dahulu.');
+				window.toast.warning('Lengkapi data volunteer terlebih dahulu.', { title: 'Data belum lengkap' });
 				document.dispatchEvent(new CustomEvent('checkout:open-modal', { detail: { name: 'volunteer' } }));
 				window.setTimeout(() => invalidAttendeeField?.reportValidity(), 100);
 				return;
 			}
 			if (!paymentMethodId) {
-				alert('Pilih metode pembayaran terlebih dahulu.');
+				window.toast.warning('Pilih metode pembayaran terlebih dahulu.', { title: 'Metode pembayaran' });
 				document.dispatchEvent(new CustomEvent('checkout:open-modal', { detail: { name: 'payment' } }));
 				return;
 			}
@@ -339,33 +315,21 @@ const snapClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '';
 					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 					body: JSON.stringify(body),
 				});
-				const data = await res.json() as { success?: boolean; order_id?: string; access_token?: string; snap_token?: string; payment_channel?: string | null; message?: string };
+				const data = await res.json() as { success?: boolean; order_id?: string; access_token?: string; payment_channel?: string | null; message?: string };
 
-				if (!res.ok || !data.success) { alert(data.message ?? 'Checkout gagal. Coba lagi.'); resetBtn(); return; }
+				if (!res.ok || !data.success) { window.toast.error(data.message ?? 'Checkout gagal. Coba lagi.'); resetBtn(); return; }
 
-				const { order_id, access_token, snap_token, payment_channel } = data;
+				const { order_id, access_token, payment_channel } = data;
 
-				if (!order_id) { alert('Gagal mendapatkan nomor pesanan.'); resetBtn(); return; }
-				if (!access_token) { alert('Gagal mendapatkan akses pembayaran. Silakan coba lagi.'); resetBtn(); return; }
+				if (!order_id) { window.toast.error('Gagal mendapatkan nomor pesanan.'); resetBtn(); return; }
+				if (!access_token) { window.toast.error('Gagal mendapatkan akses pembayaran. Silakan coba lagi.'); resetBtn(); return; }
+				if (!payment_channel) { window.toast.warning('Metode pembayaran tidak didukung. Silakan pilih Virtual Account atau e-wallet.', { title: 'Metode pembayaran' }); resetBtn(); return; }
 
-				// Channel custom (VA/QRIS/e-wallet) → tampilan instruksi bayar sendiri, bukan modal Midtrans.
-				if (payment_channel) {
-					window.location.href = paymentUrl('/payment', order_id, access_token);
-					return;
-				}
-
-				// Fallback: kartu kredit / channel tanpa instruksi custom → tetap pakai Snap popup.
-				if (!snap_token) { alert('Gagal mendapatkan token pembayaran.'); resetBtn(); return; }
-
-				await loadSnap(snapUrl, snapClientKey);
-				window.snap.pay(snap_token, {
-					onSuccess:  () => { window.location.href = paymentUrl('/payment/success', order_id); },
-					onPending:  () => { window.location.href = paymentUrl('/payment/pending', order_id, access_token); },
-					onError:    () => { window.location.href = paymentUrl('/payment/failed', order_id, access_token); },
-					onClose:    () => { resetBtn(); },
-				});
+				// Channel VA/QRIS/e-wallet → halaman instruksi bayar dengan polling status backend.
+				window.toast.success('Pesanan dibuat. Mengarahkan ke halaman pembayaran…', { title: 'Berhasil', duration: 2500 });
+				window.location.href = paymentUrl('/payment', order_id, access_token);
 			} catch {
-				alert('Terjadi kesalahan jaringan. Coba lagi.');
+				window.toast.error('Terjadi kesalahan jaringan. Coba lagi.');
 				resetBtn();
 			}
 		});
