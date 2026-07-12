@@ -21,7 +21,7 @@ const { title, date, location, image, imageAlt, href, status = '', badgeLines } 
 	data-bind-href="href"
 	aria-label={`Lihat detail ${title}`}
 >
-	<div class="relative aspect-[3/4] bg-surface-container-low">
+	<div class="relative aspect-square bg-surface-container-low">
 		<img alt={imageAlt} data-bind-alt="imageAlt" class="w-full h-full object-contain" src={image} data-bind-src="image" draggable="false" />
 		<span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-primary shadow-sm backdrop-blur-md" data-bind="status">{status}</span>
 		{
