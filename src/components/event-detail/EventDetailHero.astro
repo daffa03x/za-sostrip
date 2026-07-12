@@ -8,8 +8,8 @@ interface Props {
 const { event } = Astro.props;
 ---
 
-<section class="relative h-[400px] overflow-hidden rounded-b-[40px] bg-primary text-white" data-reveal="fade">
-	<img alt={event.imageAlt} data-bind-alt="imageAlt" class="absolute inset-0 h-full w-full object-contain" src={event.image} data-bind-src="image" draggable="false" />
+<section class="relative overflow-hidden rounded-b-[40px] bg-primary text-white" data-reveal="fade">
+	<img alt={event.imageAlt} data-bind-alt="imageAlt" class="block h-auto w-full" src={event.image} data-bind-src="image" draggable="false" />
 	<div class="absolute inset-0 bg-gradient-to-b from-black/35 via-primary/20 to-primary/75"></div>
 	<header class="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-gutter py-sm">
 		<a
