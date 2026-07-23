@@ -129,33 +129,61 @@
 							</div>
 						</div>
 
-						<div>
-							<label
-								class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
-								for={`checkout-phone-${num}`}
+					<div>
+						<label
+							class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
+							for={`checkout-phone-${num}`}
+						>
+							No. WhatsApp <span class="text-error">*</span>
+						</label>
+						<div class="relative">
+							<span
+								class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+								data-icon="phone"
 							>
-								No. WhatsApp <span class="text-error">*</span>
-							</label>
-							<div class="relative">
-								<span
-									class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
-									data-icon="phone"
-								>
-									phone
-								</span>
-								<input
-									class="w-full rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-									id={`checkout-phone-${num}`}
-									name={`attendees[${num - 1}][phone]`}
-									type="tel"
-									placeholder="08xxxxxxxxxx"
-									required={num === 1}
-									autocomplete={num === 1 ? 'tel' : 'off'}
-									data-attendee-field
-								/>
-							</div>
+								phone
+							</span>
+							<input
+								class="w-full rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+								id={`checkout-phone-${num}`}
+								name={`attendees[${num - 1}][phone]`}
+								type="tel"
+								placeholder="08xxxxxxxxxx"
+								required={num === 1}
+								autocomplete={num === 1 ? 'tel' : 'off'}
+								data-attendee-field
+							/>
 						</div>
 					</div>
+
+					<div>
+						<label
+							class="mb-xs block text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant"
+							for={`checkout-gender-${num}`}
+						>
+							Jenis kelamin <span class="text-error">*</span>
+						</label>
+						<div class="relative">
+							<span
+								class="material-symbols-outlined pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+								data-icon="wc"
+							>
+								wc
+							</span>
+							<select
+								class="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-low py-sm pl-10 pr-sm text-sm text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+								id={`checkout-gender-${num}`}
+								name={`attendees[${num - 1}][jenis_kelamin]`}
+								required={num === 1}
+								data-attendee-field
+							>
+								<option value="" disabled selected>Pilih jenis kelamin</option>
+								<option value="Laki-laki">Laki-laki</option>
+								<option value="Perempuan">Perempuan</option>
+							</select>
+						</div>
+					</div>
+				</div>
 				</div>
 			))
 		}
@@ -245,7 +273,7 @@
 
 				// Toggle required on fields
 				block.querySelectorAll('[data-attendee-field]').forEach((field) => {
-					if (field instanceof HTMLInputElement) {
+					if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
 						// First block is always required; others only when visible
 						field.required = idx === 1 ? true : visible;
 					}

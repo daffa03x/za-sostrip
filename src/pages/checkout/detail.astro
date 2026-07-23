@@ -263,14 +263,15 @@ const backendUrl = import.meta.env.PUBLIC_BACKEND_URL ?? '';
 			}
 
 			// Collect attendees
-			const pengunjung: Array<{ name: string; email: string; telepon: string }> = [];
+			const pengunjung: Array<{ name: string; email: string; telepon: string; jenis_kelamin: string }> = [];
 			let idx = 0;
 			while (idx < 3) {
 				const nameEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][name]"]`);
 				const emailEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][email]"]`);
 				const telEl = form.querySelector<HTMLInputElement>(`[name="attendees[${idx}][phone]"]`);
+				const genderEl = form.querySelector<HTMLSelectElement>(`[name="attendees[${idx}][jenis_kelamin]"]`);
 				if (!nameEl?.value) break;
-				pengunjung.push({ name: nameEl.value, email: emailEl?.value ?? '', telepon: telEl?.value ?? '' });
+				pengunjung.push({ name: nameEl.value, email: emailEl?.value ?? '', telepon: telEl?.value ?? '', jenis_kelamin: genderEl?.value ?? '' });
 				idx++;
 			}
 

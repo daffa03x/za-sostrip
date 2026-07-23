@@ -57,7 +57,7 @@ export interface CheckoutBody {
 	jumlah_tiket: number;
 	payment_method_id: number;
 	voucher_code?: string;
-	pengunjung: Array<{ name: string; email: string; telepon: string }>;
+	pengunjung: Array<{ name: string; email: string; telepon: string; jenis_kelamin: string }>;
 }
 
 export interface PaymentInstructions {
